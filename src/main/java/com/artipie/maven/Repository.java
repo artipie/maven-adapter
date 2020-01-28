@@ -18,7 +18,9 @@ import org.eclipse.aether.spi.localrepo.LocalRepositoryManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/**
+ * General abstraction over Maven remote repository
+ */
 public class Repository {
     private static final Logger log = LoggerFactory.getLogger(Repository.class);
 
