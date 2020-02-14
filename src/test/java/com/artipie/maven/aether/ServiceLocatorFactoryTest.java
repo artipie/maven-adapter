@@ -24,8 +24,15 @@
 
 package com.artipie.maven.aether;
 
+import com.artipie.asto.fs.FileStorage;
+import java.nio.file.Path;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
+import org.eclipse.aether.spi.connector.transport.TransporterFactory;
+import org.eclipse.aether.spi.localrepo.LocalRepositoryManagerFactory;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -35,13 +42,28 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 public final class ServiceLocatorFactoryTest {
 
+    /**
+     * Test temporary directory.
+     * By JUnit annotation contract it should not be private
+     * @checkstyle VisibilityModifierCheck (3 lines)
+     */
+    @TempDir
+    Path temp;
+
     @ParameterizedTest
     @ValueSource(classes = {
-        RepositoryConnectorFactory.class
+        RepositoryConnectorFactory.class,
+        RepositorySystem.class,
+        LocalRepositoryManagerFactory.class,
+        LocalRepository.class,
+        TransporterFactory.class
     })
     void shouldReturnService(final Class<?> service) {
         Assertions.assertNotNull(
-            new ServiceLocatorFactory().serviceLocator().getService(service)
+            new ServiceLocatorFactory(
+                new LocalRepository(this.temp.resolve("local").toFile()),
+                new FileStorage(this.temp.resolve("asto"))
+            ).serviceLocator().getService(service)
         );
     }
 }

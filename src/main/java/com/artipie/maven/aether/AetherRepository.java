@@ -43,7 +43,6 @@ import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.deployment.DeployRequest;
 import org.eclipse.aether.deployment.DeployResult;
-import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.spi.locator.ServiceLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,11 +68,6 @@ public final class AetherRepository implements Repository {
     private final ServiceLocatorFactory locators;
 
     /**
-     * Local repository.
-     */
-    private final LocalRepository repository;
-
-    /**
      * Staging files root.
      */
     private final AutoCloseablePath.Parent dir;
@@ -81,16 +75,13 @@ public final class AetherRepository implements Repository {
     /**
      * All args constructor.
      * @param locators Creates ServiceLocator instances
-     * @param repository Local repository
      * @param dir Staging files root
      */
     public AetherRepository(
         final ServiceLocatorFactory locators,
-        final LocalRepository repository,
         final AutoCloseablePath.Parent dir
     ) {
         this.locators = locators;
-        this.repository = repository;
         this.dir = dir;
     }
 
@@ -98,7 +89,7 @@ public final class AetherRepository implements Repository {
     public ArtifactMetadata upload(final String path, final InputStream content) throws Exception {
         final var coords = new FileCoordinates(path);
         final var locator = this.locators.serviceLocator();
-        final var session = new SessionFactory(this.repository, locator).newSession();
+        final var session = new SessionFactory(locator).newSession();
         final Artifact deployed = Iterables.getOnlyElement(
             new Deployer(locator, session)
                 .deploy(path, content)

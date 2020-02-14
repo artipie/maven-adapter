@@ -24,9 +24,13 @@
 
 package com.artipie.maven.aether;
 
+import com.artipie.asto.Storage;
+import com.artipie.asto.blocking.BlockingStorage;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
+import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
+import org.eclipse.aether.spi.connector.transport.TransporterFactory;
 import org.eclipse.aether.spi.locator.ServiceLocator;
 
 /**
@@ -39,12 +43,28 @@ import org.eclipse.aether.spi.locator.ServiceLocator;
 public final class ServiceLocatorFactory {
 
     /**
-     * Creates {@link ServiceLocator} instance.
+     * Local repository root.
+     */
+    private final LocalRepository repository;
+
+    /**
+     * Asto.
+     */
+    private final Storage asto;
+
+    /**
+     * All args constructor.
+     * @param repository Local repository
+     * @param asto Asto
+     */
+    public ServiceLocatorFactory(final LocalRepository repository, final Storage asto) {
+        this.repository = repository;
+        this.asto = asto;
+    }
+
+    /**
+     * Creates and configures {@link ServiceLocator} instance.
      * @return A ServiceLocator instance
-     * @todo #10:30min Inject a LocalRepository into a ServiceLocator.
-     *  Current design made ServiceLocatorFactory and LocalRepository coupled together.
-     *  We can retrieve a LocalRepository directly from the ServiceLocator
-     * @checkstyle NonStaticMethodCheck (2 lines) Introduce class fields in following pull requests
      */
     public ValidatingServiceLocator serviceLocator() {
         return new ValidatingServiceLocator(
@@ -52,6 +72,11 @@ public final class ServiceLocatorFactory {
                 .setService(
                     RepositoryConnectorFactory.class,
                     BasicRepositoryConnectorFactory.class
+                )
+                .setServices(LocalRepository.class, this.repository)
+                .setServices(
+                    TransporterFactory.class,
+                    new AstoTransporterFactory(new BlockingStorage(this.asto))
                 )
         );
     }

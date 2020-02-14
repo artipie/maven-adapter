@@ -38,22 +38,15 @@ import org.eclipse.aether.spi.locator.ServiceLocator;
 public class SessionFactory {
 
     /**
-     * Local repository root.
-     */
-    private final LocalRepository repository;
-
-    /**
      * Maven service locator.
      */
     private final ServiceLocator services;
 
     /**
      * All args constructor.
-     * @param repository Local repository root
      * @param services Maven service locator
      */
-    public SessionFactory(final LocalRepository repository, final ServiceLocator services) {
-        this.repository = repository;
+    public SessionFactory(final ServiceLocator services) {
         this.services = services;
     }
 
@@ -62,16 +55,17 @@ public class SessionFactory {
      * @return A RepositorySystemSession instance
      */
     public RepositorySystemSession newSession() {
+        final var repository = this.services.getService(LocalRepository.class);
         try {
             final var session = MavenRepositorySystemUtils.newSession();
             session.setLocalRepositoryManager(
                 this.services.getService(LocalRepositoryManagerFactory.class)
-                    .newInstance(session, this.repository)
+                    .newInstance(session, repository)
             );
             return session;
         } catch (final NoLocalRepositoryManagerException ex) {
             throw new IllegalStateException(
-                String.format("with local repository %s", this.repository.getBasedir()),
+                String.format("with local repository %s", repository.getBasedir()),
                 ex
             );
         }

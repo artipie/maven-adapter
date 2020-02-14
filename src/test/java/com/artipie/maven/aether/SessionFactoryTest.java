@@ -24,10 +24,12 @@
 
 package com.artipie.maven.aether;
 
-import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
+import com.artipie.asto.fs.FileStorage;
+import java.nio.file.Path;
 import org.eclipse.aether.repository.LocalRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for {@link SessionFactory}.
@@ -35,12 +37,22 @@ import org.junit.jupiter.api.Test;
  */
 public final class SessionFactoryTest {
 
+    /**
+     * Test temporary directory.
+     * By JUnit annotation contract it should not be private
+     * @checkstyle VisibilityModifierCheck (3 lines)
+     */
+    @TempDir
+    Path temp;
+
     @Test
     public void shouldConfigureSession() {
         Assertions.assertNotNull(
             new SessionFactory(
-                new LocalRepository("."),
-                MavenRepositorySystemUtils.newServiceLocator()
+                new ServiceLocatorFactory(
+                    new LocalRepository(this.temp.resolve("local").toFile()),
+                    new FileStorage(this.temp.resolve("asto"))
+                ).serviceLocator()
             )
                 .newSession()
                 .getLocalRepositoryManager()
