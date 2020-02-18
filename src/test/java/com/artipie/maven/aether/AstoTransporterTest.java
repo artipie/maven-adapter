@@ -38,6 +38,7 @@ import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -45,6 +46,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Tests for {@link AstoTransporter}.
  * @since 0.1
  */
+@Disabled("debug")
 public final class AstoTransporterTest {
 
     /**
