@@ -25,7 +25,6 @@
 package com.artipie.maven.aether;
 
 import com.artipie.maven.RepositoryFile;
-import java.util.List;
 import org.eclipse.aether.repository.RemoteRepository;
 
 /**
@@ -49,7 +48,7 @@ public final class SimpleRemoteRepositories implements RemoteRepositories {
     }
 
     @Override
-    public List<RemoteRepository> downloading(final RepositoryFile path) {
-        return List.of(SimpleRemoteRepositories.ASTO);
+    public RemoteRepository downloadingPrimary(final RepositoryFile path) {
+        return SimpleRemoteRepositories.ASTO;
     }
 }

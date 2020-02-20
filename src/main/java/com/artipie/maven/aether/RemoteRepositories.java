@@ -49,5 +49,15 @@ public interface RemoteRepositories {
      * @param path Downloading artifact
      * @return Remote repositories to find the artifact in.
      */
-    List<RemoteRepository> downloading(RepositoryFile path);
+    default List<RemoteRepository> downloading(RepositoryFile path) {
+        return List.of(this.downloadingPrimary(path));
+    }
+
+    /**
+     * A remote repository to find the artifact in.
+     * Artifacts are resolved in insertion order.
+     * @param path Downloading artifact
+     * @return Remote repositories to find the artifact in.
+     */
+    RemoteRepository downloadingPrimary(RepositoryFile path);
 }
