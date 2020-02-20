@@ -22,23 +22,12 @@
  * SOFTWARE.
  */
 
-package com.artipie.maven;
-
 /**
- * A generic marker interface of any file containing in the Artipie.
+ * A package for {@link com.artipie.maven.aether.repository.AetherRepository} and related classes.
  * @since 0.1
  */
-public interface RepositoryFile {
-
-    /**
-     * Full file path.
-     * @return Full file path
-     */
-    String path();
-
-    /**
-     * Filename. Should part of {@link #path()}
-     * @return Filename
-     */
-    String name();
-}
+/**
+ * Tests for respective package.
+ * @since 0.1
+ */
+package com.artipie.maven.aether.repository;

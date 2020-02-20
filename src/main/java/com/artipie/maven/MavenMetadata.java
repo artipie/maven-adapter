@@ -24,58 +24,56 @@
 
 package com.artipie.maven;
 
+import java.util.Arrays;
+
 /**
- * Artifact coordinates parts split into meaningful parts.
- * All return values should not be null.
- * Should be effectively sealed.
+ * Represents 'maven-metadata.xml'.
  * @since 0.1
+ * @checkstyle AvoidFieldNameMatchingMethodName (50 lines)
  */
-public interface ArtifactCoordinates extends RepositoryFile {
+public final class MavenMetadata implements ArtifactCoordinates {
 
     /**
-     * Maven artifact groupId.
-     *
-     * @return Maven artifact groupId
+     * The name is a constant.
      */
-    String groupId();
+    public static final String MAVEN_METADATA = "maven-metadata.xml";
 
     /**
-     * Maven artifactId.
-     * @return Maven artifactId
+     * Full file path.
      */
-    String artifactId();
+    @SuppressWarnings("PMD.AvoidFieldNameMatchingMethodName")
+    private final String path;
 
     /**
-     * Parses different ArtifactCoordinates from a path string.
-     * @since 0.1
+     * All args constructor.
+     * @param path Full file path
      */
-    class Parser {
+    public MavenMetadata(final String path) {
+        this.path = path;
+    }
 
-        /**
-         * File path.
-         */
-        private final String path;
+    @Override
+    public String groupId() {
+        final String[] parts = this.path.split("/");
+        return String.join(
+            ".",
+            Arrays.copyOfRange(parts, 0, parts.length - 2)
+        );
+    }
 
-        /**
-         * All args constructor.
-         * @param path A path to parse from
-         */
-        public Parser(final String path) {
-            this.path = path;
-        }
+    @Override
+    public String artifactId() {
+        final String[] parts = this.path.split("/");
+        return parts[parts.length - 2];
+    }
 
-        /**
-         * Parses different ArtifactCoordinates from a path string.
-         * @return ArtifactCoordinates instance
-         */
-        public ArtifactCoordinates parse() {
-            final ArtifactCoordinates result;
-            if (this.path.endsWith(MavenMetadata.MAVEN_METADATA)) {
-                result = new MavenMetadata(this.path);
-            } else {
-                result = new FileCoordinates(this.path);
-            }
-            return result;
-        }
+    @Override
+    public String path() {
+        return this.path;
+    }
+
+    @Override
+    public String name() {
+        return MavenMetadata.MAVEN_METADATA;
     }
 }

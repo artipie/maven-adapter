@@ -91,11 +91,7 @@ public final class FileCoordinates implements ArtifactCoordinates {
         return builder.toString();
     }
 
-    /**
-     * Rebuilds back the original path string.
-     * groupId/artifactId/version/name
-     * @return Original path string
-     */
+    @Override
     public String path() {
         return String.join(
             "/",
@@ -106,11 +102,8 @@ public final class FileCoordinates implements ArtifactCoordinates {
         );
     }
 
-    /**
-     * GroupId.
-     * @return Returns groupId part
-     * @checkstyle MagicNumberCheck (5 lines)
-     */
+    // @checkstyle MagicNumberCheck (5 lines)
+    @Override
     public String groupId() {
         return String.join(
             ".",
@@ -118,11 +111,7 @@ public final class FileCoordinates implements ArtifactCoordinates {
         );
     }
 
-    /**
-     * Filename.
-     * @return Returns filename part
-     * @checkstyle MagicNumberCheck (3 lines)
-     */
+    @Override
     public String name() {
         return this.splitter.get()[this.splitter.get().length - 1];
     }
@@ -136,11 +125,8 @@ public final class FileCoordinates implements ArtifactCoordinates {
         return this.splitter.get()[this.splitter.get().length - 2];
     }
 
-    /**
-     * ArtifactId.
-     * @return Returns artifactId part
-     * @checkstyle MagicNumberCheck (3 lines)
-     */
+    // @checkstyle MagicNumberCheck (3 lines)
+    @Override
     public String artifactId() {
         return this.splitter.get()[this.splitter.get().length - 3];
     }
