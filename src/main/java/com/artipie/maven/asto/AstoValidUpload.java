@@ -58,8 +58,7 @@ public final class AstoValidUpload implements ValidUpload {
      * handlers</a> by maven-core, and additionally {@code xml} metadata files are
      * also artifacts.
      */
-    private static final Pattern PTN_ARTIFACT =
-        Pattern.compile(".+\\.(?:pom|jar|war|ear|rar|aar)");
+    private static final Pattern PTN_ARTIFACT = Pattern.compile(".+\\.(?:pom|jar|war|ear|rar|aar)");
 
     /**
      * Storage.

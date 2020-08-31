@@ -43,7 +43,7 @@ SOFTWARE.
     <dependency>
       <groupId>com.jcabi.incubator</groupId>
       <artifactId>xembly</artifactId>
-      <version>0.23.0</version>
+      <version>0.24.0</version>
     </dependency>
     <dependency>
       <groupId>com.jcabi</groupId>
@@ -64,19 +64,19 @@ SOFTWARE.
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-connector-basic</artifactId>
-      <version>1.4.1</version>
+      <version>1.4.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-transport-file</artifactId>
-      <version>1.4.1</version>
+      <version>1.4.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-transport-http</artifactId>
-      <version>1.4.1</version>
+      <version>1.4.2</version>
       <scope>test</scope>
     </dependency>
     <!-- the rest -->
@@ -89,7 +89,7 @@ SOFTWARE.
     <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>asto</artifactId>
-      <version>0.24</version>
+      <version>0.26</version>
     </dependency>
     <dependency>
       <groupId>com.artipie</groupId>
@@ -99,7 +99,7 @@ SOFTWARE.
     <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>http-client</artifactId>
-      <version>0.1.1</version>
+      <version>0.2</version>
     </dependency>
     <!-- @todo #54:30min Remove commons usage in favor of cactoos
           Cactoos provides most of commons libraries functions in a
@@ -109,7 +109,7 @@ SOFTWARE.
     <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>vertx-server</artifactId>
-      <version>0.3.1</version>
+      <version>0.3.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
