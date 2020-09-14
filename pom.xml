@@ -35,7 +35,7 @@ SOFTWARE.
   <url>https://github.com/artipie/maven-adapter</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <junit-platform.version>5.6.2</junit-platform.version>
+    <junit-platform.version>5.7.0</junit-platform.version>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
   </properties>
