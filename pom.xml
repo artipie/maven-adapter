@@ -110,7 +110,7 @@ SOFTWARE.
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java2</artifactId>
-      <version>3.9.2</version>
+      <version>3.9.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>
