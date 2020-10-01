@@ -30,7 +30,7 @@ SOFTWARE.
     <version>0.4.1</version>
   </parent>
   <artifactId>maven-adapter</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.6</version>
   <name>maven-adapter</name>
   <url>https://github.com/artipie/maven-adapter</url>
   <properties>
