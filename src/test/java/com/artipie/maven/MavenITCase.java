@@ -47,6 +47,7 @@ import org.hamcrest.core.StringContains;
 import org.hamcrest.text.StringContainsInOrder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
@@ -61,7 +62,7 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
  * @since 0.5
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
+@SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
 @EnabledOnOs({OS.LINUX, OS.MAC})
 public final class MavenITCase {
 
@@ -107,12 +108,12 @@ public final class MavenITCase {
     void downloadsDependency(final boolean anonymous) throws Exception {
         this.init(this.auth(anonymous));
         this.settings(this.getUser(anonymous));
-        this.addFilesToStorage();
+        this.addHellowordToArtipie();
         MatcherAssert.assertThat(
             this.exec(
                 "mvn", "-s", "/home/settings.xml", "dependency:get",
                 "-Dartifact=com.artipie:helloworld:0.1"
-            ).replaceAll("\n", ""),
+            ),
             new StringContainsInOrder(
                 new ListOf<String>(
                     // @checkstyle LineLengthCheck (1 line)
@@ -125,39 +126,37 @@ public final class MavenITCase {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
+    @Disabled
     void deploysArtifact(final boolean anonymous) throws Exception {
         this.init(this.auth(anonymous));
         this.settings(this.getUser(anonymous));
-        FileUtils.copyDirectory(
-            new TestResource("helloworld-src").asPath().toFile(),
-            this.tmp.resolve("helloworld-src").toFile()
-        );
-        Files.write(
-            this.tmp.resolve("helloworld-src/pom.xml"),
-            String.format(
-                Files.readString(this.tmp.resolve("helloworld-src/pom.xml.template")), this.port
-            ).getBytes()
-        );
+        this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
-            "Build success",
+            "Deploy of the version 0.1 is successful",
             this.exec(
                 "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
-            ).replaceAll("\n", ""),
+            ),
             new StringContains("BUILD SUCCESS")
         );
-        this.exec(
-            "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "clean"
+        this.clean();
+        this.verifyArtifactsAdded("1.0");
+        MatcherAssert.assertThat(
+            "Version 0.2 is set",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml",
+                "versions:set", "-DnewVersion=2.0"
+            ),
+            new StringContains("BUILD SUCCESS")
         );
         MatcherAssert.assertThat(
-            "Artifacts added to storage",
-            this.storage.list(new Key.From("com/artipie/helloworld"))
-                .join().stream().map(Key::string).collect(Collectors.toList()),
-            Matchers.hasItems(
-                "com/artipie/helloworld/maven-metadata.xml",
-                "com/artipie/helloworld/1.0/helloworld-1.0.pom",
-                "com/artipie/helloworld/1.0/helloworld-1.0.jar"
-            )
+            "Deploy of the 0.2 is successful",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
+            ),
+            new StringContains("BUILD SUCCESS")
         );
+        this.clean();
+        this.verifyArtifactsAdded("2.0");
     }
 
     @AfterEach
@@ -171,8 +170,7 @@ public final class MavenITCase {
         MavenITCase.VERTX.close();
     }
 
-    void init(final Pair<Permissions, Authentication> auth) throws IOException,
-        InterruptedException {
+    void init(final Pair<Permissions, Authentication> auth) {
         this.storage = new InMemoryStorage();
         this.server = new VertxSliceServer(
             MavenITCase.VERTX,
@@ -180,16 +178,15 @@ public final class MavenITCase {
         );
         this.port = this.server.start();
         Testcontainers.exposeHostPorts(this.port);
-        this.cntn = new GenericContainer<>("centos:centos8")
+        this.cntn = new GenericContainer<>("maven:3.6.3-jdk-11")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
             .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
-        this.cntn.execInContainer("yum", "-y", "install", "maven");
     }
 
     private String exec(final String... actions) throws Exception {
-        return this.cntn.execInContainer(actions).getStdout();
+        return this.cntn.execInContainer(actions).getStdout().replaceAll("\n", "");
     }
 
     private void settings(final Optional<Pair<String, String>> user) throws IOException {
@@ -229,7 +226,7 @@ public final class MavenITCase {
         );
     }
 
-    private void addFilesToStorage() {
+    private void addHellowordToArtipie() {
         new TestResource("com/artipie/helloworld")
             .addFilesTo(this.storage, new Key.From("com", "artipie", "helloworld"));
     }
@@ -256,5 +253,35 @@ public final class MavenITCase {
             res = Optional.of(MavenITCase.USER);
         }
         return res;
+    }
+
+    private void copyHellowordSourceToContainer() throws IOException {
+        FileUtils.copyDirectory(
+            new TestResource("helloworld-src").asPath().toFile(),
+            this.tmp.resolve("helloworld-src").toFile()
+        );
+        Files.write(
+            this.tmp.resolve("helloworld-src/pom.xml"),
+            String.format(
+                Files.readString(this.tmp.resolve("helloworld-src/pom.xml.template")), this.port
+            ).getBytes()
+        );
+    }
+
+    private void verifyArtifactsAdded(final String version) {
+        MatcherAssert.assertThat(
+            String.format("Artifacts with %s version added to storage", version),
+            this.storage.list(new Key.From("com/artipie/helloworld"))
+                .join().stream().map(Key::string).collect(Collectors.toList()),
+            Matchers.hasItems(
+                "com/artipie/helloworld/maven-metadata.xml",
+                String.format("com/artipie/helloworld/%s/helloworld-%s.pom", version, version),
+                String.format("com/artipie/helloworld/%s/helloworld-%s.jar", version, version)
+            )
+        );
+    }
+
+    private void clean() throws Exception {
+        this.exec("mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "clean");
     }
 }
