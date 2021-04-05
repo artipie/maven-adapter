@@ -23,11 +23,9 @@
  */
 package com.artipie.maven.metadata;
 
-import com.artipie.asto.FailedCompletionStage;
 import com.artipie.asto.ext.PublisherAs;
 import com.jcabi.xml.XMLDocument;
 import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.reactivestreams.Publisher;
 
@@ -57,17 +55,13 @@ public final class DeployMetadata {
     CompletionStage<String> release() {
         return new PublisherAs(this.data).asciiString().thenApply(XMLDocument::new)
             .thenApply(xml -> xml.xpath("//release/text()"))
-            .thenCompose(
+            .thenApply(
                 release -> {
-                    final CompletionStage<String> res;
                     if (release.isEmpty()) {
-                        res = new FailedCompletionStage<>(
-                            new IllegalArgumentException("Failed to read deploy maven metadata")
-                        );
+                        throw new IllegalArgumentException("Failed to read deploy maven metadata");
                     } else {
-                        res = CompletableFuture.completedFuture(release.get(0));
+                        return release.get(0);
                     }
-                    return res;
                 }
             );
     }
