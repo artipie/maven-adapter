@@ -32,13 +32,14 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.reactivestreams.Publisher;
 
 /**
- * This slice accepts PUT requests with maven-metadata.xml, reads `latest` version from the
- * file and saves it to the temp location adding version before the filename:
- * `.upload/${package_name}/${version}/maven-metadata.xml`.
+ * This slice accepts PUT requests with maven-metadata.xml checksums, picks up corresponding
+ * maven-metadata.xml from the package upload temp location and saves the checksum. If at least
+ * sha1 and md5 checksums are present in the package upload location, this slice initiate repository
+ * update.
  * @since 0.8
  */
 @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
-public final class MetadataMavenSlice implements Slice {
+public final class PutMetadataChecksumSlice implements Slice {
 
     /**
      * Abstract storage.
@@ -49,7 +50,7 @@ public final class MetadataMavenSlice implements Slice {
      * Ctor.
      * @param asto Abstract storage
      */
-    public MetadataMavenSlice(final Storage asto) {
+    public PutMetadataChecksumSlice(final Storage asto) {
         this.asto = asto;
     }
 

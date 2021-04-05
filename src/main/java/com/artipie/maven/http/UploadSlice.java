@@ -37,7 +37,7 @@ import org.reactivestreams.Publisher;
  * @since 0.8
  */
 @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
-public final class UploadMavenSlice implements Slice {
+public final class UploadSlice implements Slice {
 
     /**
      * Abstract storage.
@@ -48,7 +48,7 @@ public final class UploadMavenSlice implements Slice {
      * Ctor.
      * @param asto Abstract storage
      */
-    public UploadMavenSlice(final Storage asto) {
+    public UploadSlice(final Storage asto) {
         this.asto = asto;
     }
 
