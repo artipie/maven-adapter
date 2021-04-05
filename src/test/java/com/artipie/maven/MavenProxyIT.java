@@ -113,12 +113,11 @@ final class MavenProxyIT {
         );
         this.port = this.server.start();
         Testcontainers.exposeHostPorts(this.port);
-        this.cntn = new GenericContainer<>("centos:centos8")
+        this.cntn = new GenericContainer<>("maven:3.6.3-jdk-11")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
             .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
-        this.exec("yum", "-y", "install", "maven");
     }
 
     @AfterEach
