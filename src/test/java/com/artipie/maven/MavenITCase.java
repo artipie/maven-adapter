@@ -132,7 +132,7 @@ public final class MavenITCase {
         this.settings(this.getUser(anonymous));
         this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
-            "Deploy of the version 0.1 is successful",
+            "Failed to deploy version 1.0",
             this.exec(
                 "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
             ),
@@ -141,7 +141,7 @@ public final class MavenITCase {
         this.clean();
         this.verifyArtifactsAdded("1.0");
         MatcherAssert.assertThat(
-            "Version 0.2 is set",
+            "Failed to set version 2.0",
             this.exec(
                 "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml",
                 "versions:set", "-DnewVersion=2.0"
@@ -149,7 +149,7 @@ public final class MavenITCase {
             new StringContains("BUILD SUCCESS")
         );
         MatcherAssert.assertThat(
-            "Deploy of the 0.2 is successful",
+            "Failed to deploy version 2.0",
             this.exec(
                 "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
             ),
@@ -270,7 +270,7 @@ public final class MavenITCase {
 
     private void verifyArtifactsAdded(final String version) {
         MatcherAssert.assertThat(
-            String.format("Artifacts with %s version added to storage", version),
+            String.format("Artifacts with %s version were not added to storage", version),
             this.storage.list(new Key.From("com/artipie/helloworld"))
                 .join().stream().map(Key::string).collect(Collectors.toList()),
             Matchers.hasItems(
