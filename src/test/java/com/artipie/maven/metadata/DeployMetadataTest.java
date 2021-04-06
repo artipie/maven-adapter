@@ -24,13 +24,9 @@
 package com.artipie.maven.metadata;
 
 import com.artipie.maven.MetadataXml;
-import io.reactivex.Flowable;
-import java.nio.ByteBuffer;
-import java.util.concurrent.CompletionException;
 import org.cactoos.list.ListOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
-import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -46,36 +42,25 @@ class DeployMetadataTest {
         final String release = "1.098";
         MatcherAssert.assertThat(
             new DeployMetadata(
-                Flowable.fromArray(
-                    ByteBuffer.wrap(
-                        new MetadataXml("com.artipie", "abc").get(
-                            new MetadataXml.VersionTags(
-                                "12", release, new ListOf<>(release, "0.3", "12", "0.1")
-                            )
-                        ).getBytes()
+                new MetadataXml("com.artipie", "abc").get(
+                    new MetadataXml.VersionTags(
+                        "12", release, new ListOf<>(release, "0.3", "12", "0.1")
                     )
                 )
-            ).release().toCompletableFuture().join(),
+            ).release(),
             new IsEqual<>(release)
         );
     }
 
     @Test
     void throwsExceptionIfMetadataInvalid() {
-        MatcherAssert.assertThat(
-            Assertions.assertThrows(
-                CompletionException.class,
-                () -> new DeployMetadata(
-                    Flowable.fromArray(
-                        ByteBuffer.wrap(
-                            new MetadataXml("com.artipie", "abc").get(
-                                new MetadataXml.VersionTags("0.3", "12", "0.1")
-                            ).getBytes()
-                        )
-                    )
-                ).release().toCompletableFuture().join()
-            ).getCause(),
-            new IsInstanceOf(IllegalArgumentException.class)
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> new DeployMetadata(
+                new MetadataXml("com.artipie", "abc").get(
+                    new MetadataXml.VersionTags("0.3", "12", "0.1")
+                )
+            ).release()
         );
     }
 

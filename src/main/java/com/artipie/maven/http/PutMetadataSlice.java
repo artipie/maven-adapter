@@ -23,12 +23,23 @@
  */
 package com.artipie.maven.http;
 
+import com.artipie.asto.Content;
+import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import com.artipie.asto.ext.PublisherAs;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
+import com.artipie.http.rq.RequestLineFrom;
+import com.artipie.http.rs.RsStatus;
+import com.artipie.http.rs.RsWithStatus;
+import com.artipie.http.slice.ContentWithSize;
+import com.artipie.http.slice.KeyFromPath;
+import com.artipie.maven.metadata.DeployMetadata;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import org.apache.commons.lang3.NotImplementedException;
+import java.util.regex.Matcher;
 import org.reactivestreams.Publisher;
 
 /**
@@ -36,8 +47,8 @@ import org.reactivestreams.Publisher;
  * file and saves it to the temp location adding version before the filename:
  * `.upload/${package_name}/${version}/maven-metadata.xml`.
  * @since 0.8
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
 public final class PutMetadataSlice implements Slice {
 
     /**
@@ -56,6 +67,30 @@ public final class PutMetadataSlice implements Slice {
     @Override
     public Response response(final String line, final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body) {
-        throw new NotImplementedException("Not yet implemented");
+        final Response res;
+        final Matcher matcher = UpdateMavenSlice.PTN_META.matcher(
+            new RequestLineFrom(line).uri().getPath()
+        );
+        if (matcher.matches()) {
+            res = new AsyncResponse(
+                new PublisherAs(body).asciiString().thenCompose(
+                    xml -> this.asto.save(
+                        new Key.From(
+                            UpdateMavenSlice.TEMP,
+                            new KeyFromPath(matcher.group("pkg")).string(),
+                            new DeployMetadata(xml).release(),
+                            "maven-metadata.xml"
+                        ),
+                        new ContentWithSize(
+                            new Content.From(xml.getBytes(StandardCharsets.US_ASCII)),
+                            headers
+                        )
+                    )
+                ).thenApply(nothing -> new RsWithStatus(RsStatus.CREATED))
+            );
+        } else {
+            res = new RsWithStatus(RsStatus.BAD_REQUEST);
+        }
+        return res;
     }
 }
