@@ -23,12 +23,18 @@
  */
 package com.artipie.maven.http;
 
+import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
+import com.artipie.http.rq.RequestLineFrom;
+import com.artipie.http.rs.RsStatus;
+import com.artipie.http.rs.RsWithStatus;
+import com.artipie.http.slice.ContentWithSize;
+import com.artipie.http.slice.KeyFromPath;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import org.apache.commons.lang3.NotImplementedException;
 import org.reactivestreams.Publisher;
 
 /**
@@ -55,6 +61,14 @@ public final class UploadSlice implements Slice {
     @Override
     public Response response(final String line, final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body) {
-        throw new NotImplementedException("Not yet implemented");
+        return new AsyncResponse(
+            this.asto.save(
+                new Key.From(
+                    UpdateMavenSlice.TEMP,
+                    new KeyFromPath(new RequestLineFrom(line).uri().getPath())
+                ),
+                new ContentWithSize(body, headers)
+            ).thenApply(nothing -> new RsWithStatus(RsStatus.CREATED))
+        );
     }
 }
