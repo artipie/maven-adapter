@@ -23,12 +23,29 @@
  */
 package com.artipie.maven.http;
 
+import com.artipie.asto.Content;
+import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import com.artipie.asto.ext.ContentDigest;
+import com.artipie.asto.ext.Digests;
+import com.artipie.asto.ext.PublisherAs;
+import com.artipie.asto.rx.RxStorageWrapper;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
+import com.artipie.http.rq.RequestLineFrom;
+import com.artipie.http.rs.RsStatus;
+import com.artipie.http.rs.RsWithStatus;
+import hu.akarnokd.rxjava2.interop.SingleInterop;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
-import org.apache.commons.lang3.NotImplementedException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.reactivestreams.Publisher;
 
 /**
@@ -37,9 +54,15 @@ import org.reactivestreams.Publisher;
  * sha1 and md5 checksums are present in the package upload location, this slice initiate repository
  * update.
  * @since 0.8
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
 public final class PutMetadataChecksumSlice implements Slice {
+
+    /**
+     * Metadata pattern.
+     */
+    static final Pattern PTN =
+        Pattern.compile("^/(?<pkg>.+)/maven-metadata.xml.(?<alg>md5|sha1|sha256|sha512)");
 
     /**
      * Abstract storage.
@@ -57,6 +80,59 @@ public final class PutMetadataChecksumSlice implements Slice {
     @Override
     public Response response(final String line, final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body) {
-        throw new NotImplementedException("Not yet implemented");
+        final Matcher matcher = PutMetadataChecksumSlice.PTN
+            .matcher(new RequestLineFrom(line).uri().getPath());
+        final Response res;
+        if (matcher.matches()) {
+            res = new AsyncResponse(
+                new PublisherAs(body).asciiString().thenCompose(
+                    sum -> {
+                        final String alg = matcher.group("alg");
+                        final String pkg = matcher.group("pkg");
+                        return new RxStorageWrapper(this.asto).list(
+                            new Key.From(UpdateMavenSlice.TEMP, pkg)
+                        ).flatMapObservable(Observable::fromIterable)
+                            .filter(item -> item.string().endsWith("maven-metadata.xml"))
+                            .flatMapSingle(
+                                item -> Single.fromFuture(
+                                    this.asto.value(item).thenCompose(
+                                        pub -> new ContentDigest(
+                                            pub, Digests.valueOf(alg.toUpperCase(Locale.US))
+                                        ).hex()
+                                    ).thenApply(hex -> new ImmutablePair<>(item, hex))
+                                )
+                            ).filter(pair -> pair.getValue().equals(sum))
+                            .toList()
+                            .flatMap(
+                                list -> {
+                                    final Single<Response> comp;
+                                    if (list.isEmpty()) {
+                                        comp = Single.just(new RsWithStatus(RsStatus.BAD_REQUEST));
+                                    } else {
+                                        comp = SingleInterop.fromFuture(
+                                            this.asto.save(
+                                                new Key.From(
+                                                    String.format(
+                                                        "%s.%s", list.get(0).getKey().string(), alg
+                                                    )
+                                                ),
+                                                new Content.From(
+                                                    sum.getBytes(StandardCharsets.US_ASCII)
+                                                )
+                                            ).thenApply(
+                                                nothing -> new RsWithStatus(RsStatus.CREATED)
+                                            )
+                                        );
+                                    }
+                                    return comp;
+                                }
+                            ).to(SingleInterop.get());
+                    }
+                )
+            );
+        } else {
+            res = new RsWithStatus(RsStatus.BAD_REQUEST);
+        }
+        return res;
     }
 }
