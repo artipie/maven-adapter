@@ -84,50 +84,42 @@ public final class PutMetadataChecksumSlice implements Slice {
             .matcher(new RequestLineFrom(line).uri().getPath());
         final Response res;
         if (matcher.matches()) {
+            final String alg = matcher.group("alg");
+            final String pkg = matcher.group("pkg");
             res = new AsyncResponse(
                 new PublisherAs(body).asciiString().thenCompose(
-                    sum -> {
-                        final String alg = matcher.group("alg");
-                        final String pkg = matcher.group("pkg");
-                        return new RxStorageWrapper(this.asto).list(
-                            new Key.From(UpdateMavenSlice.TEMP, pkg)
-                        ).flatMapObservable(Observable::fromIterable)
-                            .filter(item -> item.string().endsWith("maven-metadata.xml"))
-                            .flatMapSingle(
-                                item -> Single.fromFuture(
-                                    this.asto.value(item).thenCompose(
-                                        pub -> new ContentDigest(
-                                            pub, Digests.valueOf(alg.toUpperCase(Locale.US))
-                                        ).hex()
-                                    ).thenApply(hex -> new ImmutablePair<>(item, hex))
+                    sum -> new RxStorageWrapper(this.asto).list(
+                        new Key.From(UpdateMavenSlice.TEMP, pkg)
+                    ).flatMapObservable(Observable::fromIterable)
+                        .filter(item -> item.string().endsWith("maven-metadata.xml"))
+                        .flatMapSingle(
+                            item -> Single.fromFuture(
+                                this.asto.value(item).thenCompose(
+                                    pub -> new ContentDigest(
+                                        pub, Digests.valueOf(alg.toUpperCase(Locale.US))
+                                    ).hex()
+                                ).thenApply(hex -> new ImmutablePair<>(item, hex))
+                            )
+                        ).filter(pair -> pair.getValue().equals(sum))
+                        .singleOrError()
+                        .flatMap(
+                            pair -> SingleInterop.fromFuture(
+                                this.asto.save(
+                                    new Key.From(
+                                        String.format(
+                                            "%s.%s", pair.getKey().string(), alg
+                                        )
+                                    ),
+                                    new Content.From(
+                                        sum.getBytes(StandardCharsets.US_ASCII)
+                                    )
+                                ).thenApply(
+                                    nothing -> new RsWithStatus(RsStatus.CREATED)
                                 )
-                            ).filter(pair -> pair.getValue().equals(sum))
-                            .toList()
-                            .flatMap(
-                                list -> {
-                                    final Single<Response> comp;
-                                    if (list.isEmpty()) {
-                                        comp = Single.just(new RsWithStatus(RsStatus.BAD_REQUEST));
-                                    } else {
-                                        comp = SingleInterop.fromFuture(
-                                            this.asto.save(
-                                                new Key.From(
-                                                    String.format(
-                                                        "%s.%s", list.get(0).getKey().string(), alg
-                                                    )
-                                                ),
-                                                new Content.From(
-                                                    sum.getBytes(StandardCharsets.US_ASCII)
-                                                )
-                                            ).thenApply(
-                                                nothing -> new RsWithStatus(RsStatus.CREATED)
-                                            )
-                                        );
-                                    }
-                                    return comp;
-                                }
-                            ).to(SingleInterop.get());
-                    }
+                            )
+                        )
+                        .onErrorReturn(ignored -> new RsWithStatus(RsStatus.BAD_REQUEST))
+                        .to(SingleInterop.get())
                 )
             );
         } else {
