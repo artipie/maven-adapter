@@ -46,6 +46,14 @@ public interface ValidUpload {
     CompletionStage<Boolean> validate(Key upload, Key artifact);
 
     /**
+     * Is the upload ready to be added to repository? The upload is considered to be ready if
+     * at least an artifact, maven-metadata.xml and two checksums are present in the location.
+     * @param location Upload location to check
+     * @return Completable action with the result
+     */
+    CompletionStage<Boolean> ready(Key location);
+
+    /**
      * Dummy {@link ValidUpload} implementation.
      * @since 0.5
      */
@@ -75,6 +83,12 @@ public interface ValidUpload {
         public CompletionStage<Boolean> validate(final Key upload, final Key artifact) {
             return CompletableFuture.completedFuture(this.res);
         }
+
+        @Override
+        public CompletionStage<Boolean> ready(final Key location) {
+            return CompletableFuture.completedFuture(true);
+        }
+
     }
 
 }

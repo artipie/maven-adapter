@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Asto {@link ValidUpload} implementation validates upload from abstract storage. Validation
@@ -59,6 +60,12 @@ public final class AstoValidUpload implements ValidUpload {
      * also artifacts.
      */
     private static final Pattern PTN_ARTIFACT = Pattern.compile(".+\\.(?:pom|jar|war|ear|rar|aar)");
+
+    /**
+     * Maven metadata and metadata checksums.
+     */
+    private static final Pattern PTN_META =
+        Pattern.compile(".+/maven-metadata.xml(?:.(md5|sha1|sha256|sha512))?");
 
     /**
      * Storage.
@@ -85,6 +92,17 @@ public final class AstoValidUpload implements ValidUpload {
                     return res;
                 }
             );
+    }
+
+    @Override
+    public CompletionStage<Boolean> ready(final Key location) {
+        return this.storage.list(location).thenApply(
+            list -> list.stream().map(Key::string).collect(Collectors.toList())
+        ).thenApply(
+            // @checkstyle LineLengthCheck (2 lines)
+            list -> list.stream().filter(key -> AstoValidUpload.PTN_META.matcher(key).matches()).count() >= 3
+                && list.stream().filter(key -> AstoValidUpload.PTN_ARTIFACT.matcher(key).matches()).count() >= 1
+        );
     }
 
     /**
