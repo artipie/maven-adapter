@@ -29,10 +29,13 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.maven.MetadataXml;
+import java.util.Arrays;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Test for {@link AstoValidUpload}.
@@ -131,6 +134,33 @@ public final class AstoValidUploadTest {
         MatcherAssert.assertThat(
             this.validupload.validate(upload, artifact).toCompletableFuture().join(),
             new IsEqual<>(false)
+        );
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "pom;pom.sha1;jar;jar.sha1,xml;xml.sha1,true",
+        "war;war.md5;war.sha1,xml;xml.sha1;xml.md5,true",
+        "pom;rar,xml;xml.sha1;xml.sha256,false",
+        "'',xml;xml.sha1;xml.md5,false",
+        "jar;jar.sha256,xml;xml.sha1,false",
+        "war;war.sha256,xml,false"
+    })
+    void returnsTrueWhenReady(final String artifacts, final String meta, final boolean res) {
+        final Key location = new Key.From(".upload/com/artipie/example/0.2");
+        Arrays.stream(artifacts.split(";")).forEach(
+            item -> this.bsto.save(
+                new Key.From(location, String.format("example-0.2.%s", item)), new byte[]{}
+            )
+        );
+        Arrays.stream(meta.split(";")).forEach(
+            item -> this.bsto.save(
+                new Key.From(location, String.format("maven-metadata.%s", item)), new byte[]{}
+            )
+        );
+        MatcherAssert.assertThat(
+            this.validupload.ready(location).toCompletableFuture().join(),
+            new IsEqual<>(res)
         );
     }
 

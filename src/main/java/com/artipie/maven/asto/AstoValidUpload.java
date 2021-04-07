@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Asto {@link ValidUpload} implementation validates upload from abstract storage. Validation
@@ -59,6 +60,12 @@ public final class AstoValidUpload implements ValidUpload {
      * also artifacts.
      */
     private static final Pattern PTN_ARTIFACT = Pattern.compile(".+\\.(?:pom|jar|war|ear|rar|aar)");
+
+    /**
+     * Maven metadata and metadata checksums.
+     */
+    private static final Pattern PTN_META =
+        Pattern.compile(".+/maven-metadata.xml.(?:md5|sha1|sha256|sha512)");
 
     /**
      * Storage.
@@ -85,6 +92,26 @@ public final class AstoValidUpload implements ValidUpload {
                     return res;
                 }
             );
+    }
+
+    @Override
+    public CompletionStage<Boolean> ready(final Key location) {
+        return this.storage.list(location).thenApply(
+            list -> list.stream().map(Key::string).collect(Collectors.toList())
+        ).thenApply(
+            list ->
+                list.stream().filter(
+                    key -> AstoValidUpload.PTN_ARTIFACT.matcher(key).matches()
+                ).findAny().map(
+                    item -> list.stream().filter(
+                        key -> key.contains(item) && key.length() > item.length()
+                    ).map(key -> key.substring(key.lastIndexOf('.'))).collect(Collectors.toList())
+                ).map(
+                    algs -> list.stream().filter(item -> PTN_META.matcher(item).matches())
+                        .map(key -> key.substring(key.lastIndexOf('.')))
+                        .collect(Collectors.toList()).equals(algs)
+                ).orElse(false)
+        );
     }
 
     /**
