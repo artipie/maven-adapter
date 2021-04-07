@@ -139,11 +139,12 @@ public final class AstoValidUploadTest {
 
     @ParameterizedTest
     @CsvSource({
-        "pom;jar,xml;xml.sha1;xml.md5,true",
-        "war,xml;xml.sha1;xml.md5;xml.sha256,true",
-        "pom;rar,xml;xml.sha1;xml.sha256,true",
+        "pom;pom.sha1;jar;jar.sha1,xml;xml.sha1,true",
+        "war;war.md5;war.sha1,xml;xml.sha1;xml.md5,true",
+        "pom;rar,xml;xml.sha1;xml.sha256,false",
         "'',xml;xml.sha1;xml.md5,false",
-        "jar,xml;xml.sha1,false"
+        "jar;jar.sha256,xml;xml.sha1,false",
+        "war;war.sha256,xml,false"
     })
     void returnsTrueWhenReady(final String artifacts, final String meta, final boolean res) {
         final Key location = new Key.From(".upload/com/artipie/example/0.2");

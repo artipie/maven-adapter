@@ -47,7 +47,7 @@ public interface ValidUpload {
 
     /**
      * Is the upload ready to be added to repository? The upload is considered to be ready if
-     * at least an artifact, maven-metadata.xml and two checksums are present in the location.
+     * at an artifact (any, nondeterministic) and maven-metadata.xml have the same set of checksums.
      * @param location Upload location to check
      * @return Completable action with the result
      */

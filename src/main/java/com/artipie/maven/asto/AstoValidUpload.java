@@ -65,7 +65,7 @@ public final class AstoValidUpload implements ValidUpload {
      * Maven metadata and metadata checksums.
      */
     private static final Pattern PTN_META =
-        Pattern.compile(".+/maven-metadata.xml(?:.(md5|sha1|sha256|sha512))?");
+        Pattern.compile(".+/maven-metadata.xml.(?:md5|sha1|sha256|sha512)");
 
     /**
      * Storage.
@@ -99,9 +99,18 @@ public final class AstoValidUpload implements ValidUpload {
         return this.storage.list(location).thenApply(
             list -> list.stream().map(Key::string).collect(Collectors.toList())
         ).thenApply(
-            // @checkstyle LineLengthCheck (2 lines)
-            list -> list.stream().filter(key -> AstoValidUpload.PTN_META.matcher(key).matches()).count() >= 3
-                && list.stream().filter(key -> AstoValidUpload.PTN_ARTIFACT.matcher(key).matches()).count() >= 1
+            list ->
+                list.stream().filter(
+                    key -> AstoValidUpload.PTN_ARTIFACT.matcher(key).matches()
+                ).findAny().map(
+                    item -> list.stream().filter(
+                        key -> key.contains(item) && key.length() > item.length()
+                    ).map(key -> key.substring(key.lastIndexOf('.'))).collect(Collectors.toList())
+                ).map(
+                    algs -> list.stream().filter(item -> PTN_META.matcher(item).matches())
+                        .map(key -> key.substring(key.lastIndexOf('.')))
+                        .collect(Collectors.toList()).equals(algs)
+                ).orElse(false)
         );
     }
 
