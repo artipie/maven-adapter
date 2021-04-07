@@ -67,7 +67,7 @@ final class UpdateMavenSlice implements Slice {
     /**
      * Metadata pattern.
      */
-    private static final Pattern PTN_META = Pattern.compile("^/(?<pkg>.+)/maven-metadata.xml$");
+    static final Pattern PTN_META = Pattern.compile("^/(?<pkg>.+)/maven-metadata.xml$");
 
     /**
      * Snapshots packages versions have their own metadata, path for such metadata upload is
