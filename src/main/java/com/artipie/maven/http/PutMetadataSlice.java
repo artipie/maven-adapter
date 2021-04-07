@@ -33,7 +33,6 @@ import com.artipie.http.async.AsyncResponse;
 import com.artipie.http.rq.RequestLineFrom;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
-import com.artipie.http.slice.ContentWithSize;
 import com.artipie.http.slice.KeyFromPath;
 import com.artipie.maven.metadata.DeployMetadata;
 import java.nio.ByteBuffer;
@@ -81,10 +80,7 @@ public final class PutMetadataSlice implements Slice {
                             new DeployMetadata(xml).release(),
                             "maven-metadata.xml"
                         ),
-                        new ContentWithSize(
-                            new Content.From(xml.getBytes(StandardCharsets.US_ASCII)),
-                            headers
-                        )
+                        new Content.From(xml.getBytes(StandardCharsets.US_ASCII))
                     )
                 ).thenApply(nothing -> new RsWithStatus(RsStatus.CREATED))
             );
