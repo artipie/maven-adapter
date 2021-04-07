@@ -23,11 +23,8 @@
  */
 package com.artipie.maven.metadata;
 
-import com.artipie.asto.ext.PublisherAs;
 import com.jcabi.xml.XMLDocument;
-import java.nio.ByteBuffer;
-import java.util.concurrent.CompletionStage;
-import org.reactivestreams.Publisher;
+import java.util.List;
 
 /**
  * Extracts information from the metadata maven client sends on deploy.
@@ -38,13 +35,13 @@ public final class DeployMetadata {
     /**
      * Metadata.
      */
-    private final Publisher<ByteBuffer> data;
+    private final String data;
 
     /**
      * Ctor.
      * @param data Metadata
      */
-    public DeployMetadata(final Publisher<ByteBuffer> data) {
+    public DeployMetadata(final String data) {
         this.data = data;
     }
 
@@ -52,17 +49,12 @@ public final class DeployMetadata {
      * Get versioning/release tag value.
      * @return Completion action
      */
-    CompletionStage<String> release() {
-        return new PublisherAs(this.data).asciiString().thenApply(XMLDocument::new)
-            .thenApply(xml -> xml.xpath("//release/text()"))
-            .thenApply(
-                release -> {
-                    if (release.isEmpty()) {
-                        throw new IllegalArgumentException("Failed to read deploy maven metadata");
-                    } else {
-                        return release.get(0);
-                    }
-                }
-            );
+    public String release() {
+        final List<String> release = new XMLDocument(this.data).xpath("//release/text()");
+        if (release.isEmpty()) {
+            throw new IllegalArgumentException("Failed to read deploy maven metadata");
+        } else {
+            return release.get(0);
+        }
     }
 }
