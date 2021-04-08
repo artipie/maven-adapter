@@ -70,10 +70,9 @@ public final class PutMetadataChecksumSlice implements Slice {
         Pattern.compile("^/(?<pkg>.+)/maven-metadata.xml.(?<alg>md5|sha1|sha256|sha512)");
 
     /**
-     * Completed future with RsStatus.BAD_REQUEST.
+     * Response with status BAD_REQUEST.
      */
-    private static final CompletableFuture<Response> BAD_REQUEST =
-        CompletableFuture.completedFuture(new RsWithStatus(RsStatus.BAD_REQUEST));
+    private static final Response BAD_REQUEST = new RsWithStatus(RsStatus.BAD_REQUEST);
 
     /**
      * Abstract storage.
@@ -132,7 +131,9 @@ public final class PutMetadataChecksumSlice implements Slice {
                                 }
                             );
                         } else {
-                            resp = PutMetadataChecksumSlice.BAD_REQUEST;
+                            resp = CompletableFuture.completedFuture(
+                                PutMetadataChecksumSlice.BAD_REQUEST
+                            );
                         }
                         return resp;
                     }
@@ -158,7 +159,7 @@ public final class PutMetadataChecksumSlice implements Slice {
                     upd = this.mvn.update(location, new Key.From(pkg))
                         .thenApply(ignored -> new RsWithStatus(RsStatus.CREATED));
                 } else {
-                    upd = PutMetadataChecksumSlice.BAD_REQUEST;
+                    upd = CompletableFuture.completedFuture(PutMetadataChecksumSlice.BAD_REQUEST);
                 }
                 return upd;
             }
