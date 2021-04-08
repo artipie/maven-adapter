@@ -62,31 +62,46 @@ public interface ValidUpload {
         /**
          * Validation result.
          */
-        private final boolean res;
+        private final boolean valid;
+
+        /**
+         * Is upload ready?
+         */
+        private final boolean rdy;
 
         /**
          * Ctor.
-         * @param res Result of the validation
+         * @param valid Result of the validation
+         * @param ready Is upload ready?
          */
-        public Dummy(final boolean res) {
-            this.res = res;
+        public Dummy(final boolean valid, final boolean ready) {
+            this.valid = valid;
+            this.rdy = ready;
+        }
+
+        /**
+         * Ctor.
+         * @param valid Result of the validation
+         */
+        public Dummy(final boolean valid) {
+            this(valid, true);
         }
 
         /**
          * Ctor.
          */
         public Dummy() {
-            this(true);
+            this(true, true);
         }
 
         @Override
         public CompletionStage<Boolean> validate(final Key upload, final Key artifact) {
-            return CompletableFuture.completedFuture(this.res);
+            return CompletableFuture.completedFuture(this.valid);
         }
 
         @Override
         public CompletionStage<Boolean> ready(final Key location) {
-            return CompletableFuture.completedFuture(true);
+            return CompletableFuture.completedFuture(this.rdy);
         }
 
     }
