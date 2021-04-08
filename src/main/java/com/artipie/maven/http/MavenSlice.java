@@ -37,6 +37,8 @@ import com.artipie.http.rt.RtRule;
 import com.artipie.http.rt.RtRulePath;
 import com.artipie.http.rt.SliceRoute;
 import com.artipie.http.slice.SliceSimple;
+import com.artipie.maven.asto.AstoMaven;
+import com.artipie.maven.asto.AstoValidUpload;
 
 /**
  * Maven API entry point.
@@ -74,9 +76,33 @@ public final class MavenSlice extends Slice.Wrap {
                     )
                 ),
                 new RtRulePath(
+                    new RtRule.All(
+                        new ByMethodsRule(RqMethod.PUT),
+                        new RtRule.ByPath(PutMetadataSlice.PTN_META)
+                    ),
+                    new BasicAuthSlice(
+                        new PutMetadataSlice(storage),
+                        users,
+                        new Permission.ByName(perms, Action.Standard.WRITE)
+                    )
+                ),
+                new RtRulePath(
+                    new RtRule.All(
+                        new ByMethodsRule(RqMethod.PUT),
+                        new RtRule.ByPath(PutMetadataChecksumSlice.PTN)
+                    ),
+                    new BasicAuthSlice(
+                        new PutMetadataChecksumSlice(
+                            storage, new AstoValidUpload(storage), new AstoMaven(storage)
+                        ),
+                        users,
+                        new Permission.ByName(perms, Action.Standard.WRITE)
+                    )
+                ),
+                new RtRulePath(
                     new ByMethodsRule(RqMethod.PUT),
                     new BasicAuthSlice(
-                        new UpdateMavenSlice(storage),
+                        new UploadSlice(storage),
                         users,
                         new Permission.ByName(perms, Action.Standard.WRITE)
                     )

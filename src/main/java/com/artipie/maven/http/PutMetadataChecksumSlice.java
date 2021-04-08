@@ -178,7 +178,7 @@ public final class PutMetadataChecksumSlice implements Slice {
         final String alg, final String pkg) {
         return new PublisherAs(body).asciiString().thenCompose(
             sum -> new RxStorageWrapper(this.asto).list(
-                new Key.From(UpdateMavenSlice.TEMP, pkg)
+                new Key.From(UploadSlice.TEMP, pkg)
             ).flatMapObservable(Observable::fromIterable)
                 .filter(item -> item.string().endsWith("maven-metadata.xml"))
                 .flatMapSingle(

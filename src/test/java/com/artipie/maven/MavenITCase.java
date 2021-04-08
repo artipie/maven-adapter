@@ -47,7 +47,6 @@ import org.hamcrest.core.StringContains;
 import org.hamcrest.text.StringContainsInOrder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
@@ -126,7 +125,6 @@ public final class MavenITCase {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    @Disabled
     void deploysArtifact(final boolean anonymous) throws Exception {
         this.init(this.auth(anonymous));
         this.settings(this.getUser(anonymous));

@@ -21,9 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.artipie.maven.asto;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
@@ -46,27 +46,28 @@ import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.hamcrest.core.AllOf;
+import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link AstoMaven} class.
- *
- * @since 0.4
+ * Test for {@link AstoMaven}.
+ * @since 0.8
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
+ * @checkstyle MagicNumberCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-public final class AstoMavenTest {
+final class AstoMavenTest {
 
     /**
      * Logger upload key.
      */
-    public static final Key LGR_UPLOAD = new Key.From(".update/com/test/logger");
+    private static final Key LGR_UPLOAD = new Key.From(".update/com/test/logger");
 
     /**
      * Logger package key.
      */
-    public static final Key LGR = new Key.From("com/test/logger");
+    private static final Key LGR = new Key.From("com/test/logger");
 
     /**
      * Asto artifact key.
@@ -100,13 +101,13 @@ public final class AstoMavenTest {
             AstoMavenTest.ASTO_UPLOAD
         );
         this.metadataAndVersions(latest);
-        new AstoMaven(this.storage)
-            .update(AstoMavenTest.ASTO_UPLOAD, AstoMavenTest.ASTO)
-            .toCompletableFuture()
-            .join();
+        new AstoMaven(this.storage).update(
+            new Key.From(AstoMavenTest.ASTO_UPLOAD, latest), AstoMavenTest.ASTO
+        ).toCompletableFuture().join();
         MatcherAssert.assertThat(
+            "Maven metadata xml is not correct",
             new XMLDocument(
-                this.storage.value(new Key.From(AstoMavenTest.ASTO_UPLOAD, "maven-metadata.xml"))
+                this.storage.value(new Key.From(AstoMavenTest.ASTO, "maven-metadata.xml"))
                     .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
                     .join()
             ),
@@ -127,17 +128,33 @@ public final class AstoMavenTest {
                 )
             )
         );
+        MatcherAssert.assertThat(
+            "Artifacts were not moved to the correct location",
+            this.storage.list(new Key.From(AstoMavenTest.ASTO, latest)).join().size(),
+            new IsEqual<>(3)
+        );
+        MatcherAssert.assertThat(
+            "Upload directory was not cleaned up",
+            this.storage.list(new Key.From(AstoMavenTest.ASTO_UPLOAD, latest))
+                .join().size(),
+            new IsEqual<>(0)
+        );
     }
 
     @Test
     void generatesMetadataForFirstArtifact() {
-        new TestResource("maven-metadata.xml.example")
-            .saveTo(this.storage, new Key.From(AstoMavenTest.LGR_UPLOAD, "maven-metadata.xml"));
-        new AstoMaven(this.storage).update(AstoMavenTest.LGR_UPLOAD, AstoMavenTest.LGR)
-            .toCompletableFuture().join();
+        final String version = "1.0";
+        new TestResource("maven-metadata.xml.example").saveTo(
+            this.storage,
+            new Key.From(AstoMavenTest.LGR_UPLOAD, version, "maven-metadata.xml")
+        );
+        new AstoMaven(this.storage).update(
+            new Key.From(AstoMavenTest.LGR_UPLOAD, version), AstoMavenTest.LGR
+        ).toCompletableFuture().join();
         MatcherAssert.assertThat(
+            "Maven metadata xml is not correct",
             new XMLDocument(
-                this.storage.value(new Key.From(AstoMavenTest.LGR_UPLOAD, "maven-metadata.xml"))
+                this.storage.value(new Key.From(AstoMavenTest.LGR, "maven-metadata.xml"))
                     .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
                     .join()
             ),
@@ -153,16 +170,26 @@ public final class AstoMavenTest {
                 )
             )
         );
+        MatcherAssert.assertThat(
+            "Upload directory was not cleaned up",
+            this.storage.list(new Key.From(AstoMavenTest.LGR_UPLOAD, version))
+                .join().size(),
+            new IsEqual<>(0)
+        );
     }
 
     @Test
     void addsMetadataChecksums() {
-        new TestResource("maven-metadata.xml.example")
-            .saveTo(this.storage, new Key.From(AstoMavenTest.LGR_UPLOAD, "maven-metadata.xml"));
-        new AstoMaven(this.storage).update(AstoMavenTest.LGR_UPLOAD, AstoMavenTest.LGR)
-            .toCompletableFuture().join();
+        final String version = "0.1";
+        new TestResource("maven-metadata.xml.example").saveTo(
+            this.storage,
+            new Key.From(AstoMavenTest.LGR_UPLOAD, version, "maven-metadata.xml")
+        );
+        new AstoMaven(this.storage).update(
+            new Key.From(AstoMavenTest.LGR_UPLOAD, version), AstoMavenTest.LGR
+        ).toCompletableFuture().join();
         MatcherAssert.assertThat(
-            this.storage.list(AstoMavenTest.LGR_UPLOAD).join().stream()
+            this.storage.list(AstoMavenTest.LGR).join().stream()
                 .map(key -> new KeyLastPart(key).get())
                 .filter(key -> key.contains("maven-metadata.xml"))
                 .toArray(String[]::new),
@@ -174,19 +201,63 @@ public final class AstoMavenTest {
     }
 
     @Test
+    void updatesCorrectlyWhenVersionIsDowngraded() {
+        final String version = "1.0";
+        new MetadataXml("com.test", "logger").addXmlToStorage(
+            this.storage, new Key.From(AstoMavenTest.LGR, "maven-metadata.xml"),
+            new MetadataXml.VersionTags("2.0", "2.0", new ListOf<>("2.0"))
+        );
+        this.storage.save(
+            new Key.From(AstoMavenTest.LGR, "2.0", "logger-2.0.jar"), Content.EMPTY
+        ).join();
+        new MetadataXml("com.test", "logger").addXmlToStorage(
+            this.storage, new Key.From(AstoMavenTest.LGR_UPLOAD, "1.0/maven-metadata.xml"),
+            new MetadataXml.VersionTags("2.0", "1.0", new ListOf<>("2.0", "1.0"))
+        );
+        new AstoMaven(this.storage).update(
+            new Key.From(AstoMavenTest.LGR_UPLOAD, version), AstoMavenTest.LGR
+        ).toCompletableFuture().join();
+        MatcherAssert.assertThat(
+            "Maven metadata xml is not correct",
+            new XMLDocument(
+                this.storage.value(new Key.From(AstoMavenTest.LGR, "maven-metadata.xml"))
+                    .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
+                    .join()
+            ),
+            new AllOf<>(
+                new ListOf<Matcher<? super XML>>(
+                    XhtmlMatchers.hasXPath("/metadata/groupId[text() = 'com.test']"),
+                    XhtmlMatchers.hasXPath("/metadata/artifactId[text() = 'logger']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/latest[text() = '2.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/release[text() = '2.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/versions/version[text() = '2.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/versions/version[text() = '1.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/versions[count(//version) = 2]"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/lastUpdated")
+                )
+            )
+        );
+        MatcherAssert.assertThat(
+            "Upload directory was not cleaned up",
+            this.storage.list(new Key.From(AstoMavenTest.LGR_UPLOAD, version))
+                .join().size(),
+            new IsEqual<>(0)
+        );
+    }
+
+    @Test
     void generatesWithSnapshotMetadata() throws Exception {
         final String snapshot = "1.0-SNAPSHOT";
         final Predicate<String> cond = item -> !item.contains(snapshot);
         this.addFilesToStorage(cond, AstoMavenTest.ASTO);
         this.addFilesToStorage(cond.negate(), AstoMavenTest.ASTO);
         this.metadataAndVersions(snapshot, "0.20.2");
-        new AstoMaven(this.storage)
-            .update(AstoMavenTest.ASTO_UPLOAD, AstoMavenTest.ASTO)
-            .toCompletableFuture()
-            .get();
+        new AstoMaven(this.storage).update(
+            new Key.From(AstoMavenTest.ASTO_UPLOAD, snapshot), AstoMavenTest.ASTO
+        ).toCompletableFuture().get();
         MatcherAssert.assertThat(
             new XMLDocument(
-                this.storage.value(new Key.From(AstoMavenTest.ASTO_UPLOAD, "maven-metadata.xml"))
+                this.storage.value(new Key.From(AstoMavenTest.ASTO, "maven-metadata.xml"))
                     .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
                     .join()
             ),
@@ -207,6 +278,17 @@ public final class AstoMavenTest {
                     XhtmlMatchers.hasXPath("/metadata/versioning/lastUpdated")
                 )
             )
+        );
+        MatcherAssert.assertThat(
+            "Artifacts were not moved to the correct location",
+            this.storage.list(new Key.From(AstoMavenTest.ASTO, snapshot)).join().size(),
+            new IsEqual<>(12)
+        );
+        MatcherAssert.assertThat(
+            "Upload directory was not cleaned up",
+            this.storage.list(new Key.From(AstoMavenTest.ASTO_UPLOAD, snapshot))
+                .join().size(),
+            new IsEqual<>(0)
         );
     }
 
@@ -229,17 +311,17 @@ public final class AstoMavenTest {
         );
     }
 
-    private void metadataAndVersions(final String... versions) {
+    private void metadataAndVersions(final String latest, final String... versions) {
         new MetadataXml("com.artipie", "asto").addXmlToStorage(
-            this.storage, new Key.From(AstoMavenTest.ASTO_UPLOAD, "maven-metadata.xml"),
+            this.storage,
+            new Key.From(AstoMavenTest.ASTO_UPLOAD, latest, "maven-metadata.xml"),
             new MetadataXml.VersionTags(
                 "0.20.2", "0.20.2",
                 Stream.concat(
-                    Stream.of("0.11.1", "0.15", "0.18", "0.20.1"),
+                    Stream.of("0.11.1", "0.15", "0.18", "0.20.1", latest),
                     Stream.of(versions)
                 ).collect(Collectors.toList())
             )
         );
     }
-
 }

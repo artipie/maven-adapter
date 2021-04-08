@@ -27,7 +27,6 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.ContentDigest;
 import com.artipie.asto.ext.Digests;
-import com.artipie.asto.rx.RxStorage;
 import com.artipie.asto.rx.RxStorageWrapper;
 import com.artipie.maven.ValidUpload;
 import com.artipie.maven.metadata.ArtifactsMetadata;
@@ -160,26 +159,20 @@ public final class AstoValidUpload implements ValidUpload {
      * @return Completable validation action: true if checksums are correct, false otherwise
      */
     private CompletionStage<Boolean> validateChecksums(final Key upload) {
-        final RxStorage rxsto = new RxStorageWrapper(this.storage);
-        return new ArtifactsMetadata(this.storage).maxVersion(upload).thenCompose(
-            version -> {
-                final Key pckg = new Key.From(upload, version);
-                return rxsto.list(pckg)
-                    .flatMapObservable(Observable::fromIterable)
-                    .filter(key -> PTN_ARTIFACT.matcher(key.string()).matches())
-                    .flatMapSingle(
-                        this::validateArtifactChecksums
-                    ).reduce(
-                        new ArrayList<>(5),
-                        (list, res) -> {
-                            list.add(res);
-                            return list;
-                        }
-                    ).map(
-                        array -> !array.isEmpty() && !array.contains(false)
-                    ).to(SingleInterop.get());
-            }
-        );
+        return new RxStorageWrapper(this.storage).list(upload)
+            .flatMapObservable(Observable::fromIterable)
+            .filter(key -> PTN_ARTIFACT.matcher(key.string()).matches())
+            .flatMapSingle(
+                this::validateArtifactChecksums
+            ).reduce(
+                new ArrayList<>(5),
+                (list, res) -> {
+                    list.add(res);
+                    return list;
+                }
+            ).map(
+                array -> !array.isEmpty() && !array.contains(false)
+            ).to(SingleInterop.get());
     }
 
     /**
