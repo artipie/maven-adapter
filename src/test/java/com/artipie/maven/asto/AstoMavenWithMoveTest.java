@@ -23,6 +23,7 @@
  */
 package com.artipie.maven.asto;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
@@ -165,6 +166,51 @@ class AstoMavenWithMoveTest {
                     XhtmlMatchers.hasXPath("/metadata/versioning/release[text() = '1.0']"),
                     XhtmlMatchers.hasXPath("/metadata/versioning/versions/version[text() = '1.0']"),
                     XhtmlMatchers.hasXPath("/metadata/versioning/versions[count(//version) = 1]"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/lastUpdated")
+                )
+            )
+        );
+        MatcherAssert.assertThat(
+            "Upload directory was not cleaned up",
+            this.storage.list(new Key.From(AstoMavenWithMoveTest.LGR_UPLOAD, version))
+                .join().size(),
+            new IsEqual<>(0)
+        );
+    }
+
+    @Test
+    void updatesCorrectlyWhenVersionIsDowngraded() {
+        final String version = "1.0";
+        new MetadataXml("com.test", "logger").addXmlToStorage(
+            this.storage, new Key.From(AstoMavenWithMoveTest.LGR, "maven-metadata.xml"),
+            new MetadataXml.VersionTags("2.0", "2.0", new ListOf<>("2.0"))
+        );
+        this.storage.save(
+            new Key.From(AstoMavenWithMoveTest.LGR, "2.0", "logger-2.0.jar"), Content.EMPTY
+        ).join();
+        new MetadataXml("com.test", "logger").addXmlToStorage(
+            this.storage, new Key.From(AstoMavenWithMoveTest.LGR_UPLOAD, "1.0/maven-metadata.xml"),
+            new MetadataXml.VersionTags("2.0", "1.0", new ListOf<>("2.0", "1.0"))
+        );
+        new AstoMavenWithMove(this.storage).update(
+            new Key.From(AstoMavenWithMoveTest.LGR_UPLOAD, version), AstoMavenWithMoveTest.LGR
+        ).toCompletableFuture().join();
+        MatcherAssert.assertThat(
+            "Maven metadata xml is not correct",
+            new XMLDocument(
+                this.storage.value(new Key.From(AstoMavenWithMoveTest.LGR, "maven-metadata.xml"))
+                    .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
+                    .join()
+            ),
+            new AllOf<>(
+                new ListOf<Matcher<? super XML>>(
+                    XhtmlMatchers.hasXPath("/metadata/groupId[text() = 'com.test']"),
+                    XhtmlMatchers.hasXPath("/metadata/artifactId[text() = 'logger']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/latest[text() = '2.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/release[text() = '2.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/versions/version[text() = '2.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/versions/version[text() = '1.0']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/versions[count(//version) = 2]"),
                     XhtmlMatchers.hasXPath("/metadata/versioning/lastUpdated")
                 )
             )

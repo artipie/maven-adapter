@@ -29,7 +29,7 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.SubStorage;
 import com.artipie.asto.ext.PublisherAs;
 import com.artipie.maven.Maven;
-import com.artipie.maven.metadata.ArtifactsMetadata;
+import com.artipie.maven.metadata.DeployMetadata;
 import com.artipie.maven.metadata.MavenMetadata;
 import com.jcabi.xml.XMLDocument;
 import java.util.Collection;
@@ -42,6 +42,7 @@ import org.xembly.Directives;
  * Maven front for artipie maven adaptor.
  *
  * @since 0.2
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class AstoMavenWithMove implements Maven {
 
@@ -67,32 +68,28 @@ public final class AstoMavenWithMove implements Maven {
     public CompletionStage<Void> update(final Key upload, final Key artifact) {
         return this.storage.exclusively(
             artifact,
-            target -> this.storage.value(new Key.From(upload, AstoMavenWithMove.MAVEN_META))
-                .thenCompose(
-                    pub -> new PublisherAs(pub).asciiString()
-                )
-                .thenApply(XMLDocument::new)
-                .thenApply(doc -> new MavenMetadata(Directives.copyOf(doc.node())))
-                .thenCompose(
-                    doc -> target.list(artifact).thenApply(
-                        items -> items.stream()
-                            .map(
-                                item -> item.string()
-                                    .replaceAll(String.format("%s/", artifact.string()), "")
-                                    .split("/")[0]
-                            )
-                            .filter(item -> !item.startsWith("maven-metadata"))
-                            .collect(Collectors.toSet())
-                    ).thenCompose(
-                        versions -> new ArtifactsMetadata(this.storage).maxVersion(upload)
-                            .thenApply(
-                                latest -> {
-                                    versions.add(latest);
-                                    return doc.versions(versions);
-                                }
-                        )
+            target -> target.list(artifact).thenApply(
+                items -> items.stream()
+                    .map(
+                        item -> item.string()
+                            .replaceAll(String.format("%s/", artifact.string()), "")
+                            .split("/")[0]
                     )
-                ).thenCompose(doc -> doc.save(this.storage, upload))
+                    .filter(item -> !item.startsWith("maven-metadata"))
+                    .collect(Collectors.toSet())
+                ).thenCompose(
+                    versions ->
+                        this.storage.value(new Key.From(upload, AstoMavenWithMove.MAVEN_META))
+                            .thenCompose(pub -> new PublisherAs(pub).asciiString())
+                            .thenCompose(
+                                str -> {
+                                    versions.add(new DeployMetadata(str).release());
+                                    return new MavenMetadata(
+                                        Directives.copyOf(new XMLDocument(str).node())
+                                    ).versions(versions).save(this.storage, upload);
+                                }
+                            )
+                )
                 .thenCompose(meta -> new RepositoryChecksums(this.storage).generate(meta))
                 .thenCompose(nothing -> this.moveToTheRepository(upload, target, artifact))
                 .thenCompose(nothing -> this.storage.list(upload).thenCompose(this::remove))
