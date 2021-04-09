@@ -73,11 +73,11 @@ class PutMetadataChecksumSliceTest {
             new MetadataXml.VersionTags("0.1")
         ).getBytes(StandardCharsets.UTF_8);
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/abc/0.1/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.1/maven-metadata.xml"),
             new Content.From(xml)
         ).join();
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/abc/0.2/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.2/maven-metadata.xml"),
             new Content.From("any".getBytes())
         ).join();
         final byte[] mdfive = new ContentDigest(
@@ -118,11 +118,11 @@ class PutMetadataChecksumSliceTest {
             new MetadataXml.VersionTags("0.1")
         ).getBytes(StandardCharsets.UTF_8);
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/abc/0.1/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.1/maven-metadata.xml"),
             new Content.From(xml)
         ).join();
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/abc/0.2/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.2/maven-metadata.xml"),
             new Content.From("any".getBytes())
         ).join();
         final String alg = "md5";
@@ -155,11 +155,11 @@ class PutMetadataChecksumSliceTest {
             new MetadataXml.VersionTags("0.1")
         ).getBytes(StandardCharsets.UTF_8);
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/abc/0.1/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.1/maven-metadata.xml"),
             new Content.From(xml)
         ).join();
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/abc/0.2/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.2/maven-metadata.xml"),
             new Content.From("any".getBytes())
         ).join();
         final String alg = "sha1";
@@ -198,7 +198,7 @@ class PutMetadataChecksumSliceTest {
     @Test
     void returnsBadRequestIfSuitableMetadataFileNotFound() {
         this.asto.save(
-            new Key.From(UpdateMavenSlice.TEMP, "com/example/xyz/0.1/maven-metadata.xml"),
+            new Key.From(UploadSlice.TEMP, "com/example/xyz/0.1/maven-metadata.xml"),
             new Content.From("xml".getBytes())
         ).join();
         final Maven.Fake mvn = new Maven.Fake();

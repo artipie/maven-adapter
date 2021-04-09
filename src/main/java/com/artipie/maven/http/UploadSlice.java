@@ -46,6 +46,11 @@ import org.reactivestreams.Publisher;
 public final class UploadSlice implements Slice {
 
     /**
+     * Temp storage key.
+     */
+    static final Key TEMP = new Key.From(".upload");
+
+    /**
      * Abstract storage.
      */
     private final Storage asto;
@@ -64,7 +69,7 @@ public final class UploadSlice implements Slice {
         return new AsyncResponse(
             this.asto.save(
                 new Key.From(
-                    UpdateMavenSlice.TEMP,
+                    UploadSlice.TEMP,
                     new KeyFromPath(new RequestLineFrom(line).uri().getPath())
                 ),
                 new ContentWithSize(body, headers)

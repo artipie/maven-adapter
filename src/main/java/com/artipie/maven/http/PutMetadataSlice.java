@@ -39,6 +39,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
 
 /**
@@ -49,6 +50,11 @@ import org.reactivestreams.Publisher;
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class PutMetadataSlice implements Slice {
+
+    /**
+     * Metadata pattern.
+     */
+    static final Pattern PTN_META = Pattern.compile("^/(?<pkg>.+)/maven-metadata.xml$");
 
     /**
      * Abstract storage.
@@ -67,7 +73,7 @@ public final class PutMetadataSlice implements Slice {
     public Response response(final String line, final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body) {
         final Response res;
-        final Matcher matcher = UpdateMavenSlice.PTN_META.matcher(
+        final Matcher matcher = PutMetadataSlice.PTN_META.matcher(
             new RequestLineFrom(line).uri().getPath()
         );
         if (matcher.matches()) {
@@ -75,7 +81,7 @@ public final class PutMetadataSlice implements Slice {
                 new PublisherAs(body).asciiString().thenCompose(
                     xml -> this.asto.save(
                         new Key.From(
-                            UpdateMavenSlice.TEMP,
+                            UploadSlice.TEMP,
                             new KeyFromPath(matcher.group("pkg")).string(),
                             new DeployMetadata(xml).release(),
                             "maven-metadata.xml"

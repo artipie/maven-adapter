@@ -23,19 +23,18 @@
  */
 package com.artipie.maven.asto;
 
-import com.artipie.asto.Concatenation;
+import com.artipie.asto.Copy;
 import com.artipie.asto.Key;
-import com.artipie.asto.Remaining;
 import com.artipie.asto.Storage;
+import com.artipie.asto.SubStorage;
+import com.artipie.asto.ext.PublisherAs;
 import com.artipie.maven.Maven;
-import com.artipie.maven.metadata.ArtifactsMetadata;
+import com.artipie.maven.metadata.DeployMetadata;
 import com.artipie.maven.metadata.MavenMetadata;
 import com.jcabi.xml.XMLDocument;
-import hu.akarnokd.rxjava2.interop.SingleInterop;
-import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import org.xembly.Directives;
 
@@ -43,8 +42,14 @@ import org.xembly.Directives;
  * Maven front for artipie maven adaptor.
  *
  * @since 0.2
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class AstoMaven implements Maven {
+
+    /**
+     * Maven metadata xml name.
+     */
+    private static final String MAVEN_META = "maven-metadata.xml";
 
     /**
      * Repository storage.
@@ -52,57 +57,84 @@ public final class AstoMaven implements Maven {
     private final Storage storage;
 
     /**
-     * Update metadata executor.
-     */
-    private final Executor exec;
-
-    /**
-     * Ctor.
-     * @param storage Maven repo storage
-     */
-    public AstoMaven(final Storage storage) {
-        this(storage, Executors.newSingleThreadExecutor());
-    }
-
-    /**
      * Constructor.
      * @param storage Storage used by this class.
-     * @param exec Executor
      */
-    public AstoMaven(final Storage storage, final Executor exec) {
+    public AstoMaven(final Storage storage) {
         this.storage = storage;
-        this.exec = exec;
     }
 
     @Override
     public CompletionStage<Void> update(final Key upload, final Key artifact) {
-        return this.storage.value(new Key.From(upload, "maven-metadata.xml"))
-            .thenComposeAsync(
-                pub -> new Concatenation(pub).single().to(SingleInterop.get()), this.exec
-            )
-            .thenApplyAsync(buf -> new String(new Remaining(buf).bytes(), StandardCharsets.UTF_8))
-            .thenApply(XMLDocument::new)
-            .thenApply(doc -> new MavenMetadata(Directives.copyOf(doc.node())))
-            .thenCompose(
-                doc -> this.storage.list(artifact).thenApply(
-                    items -> items.stream()
-                        .map(
-                            item -> item.string()
-                                .replaceAll(String.format("%s/", artifact.string()), "")
-                                .split("/")[0]
-                        )
-                        .filter(item -> !item.startsWith("maven-metadata"))
-                        .collect(Collectors.toSet())
-                ).thenCompose(
-                    versions -> new ArtifactsMetadata(this.storage).maxVersion(upload)
-                        .thenApply(
-                            latest -> {
-                                versions.add(latest);
-                                return doc.versions(versions);
-                            }
+        return this.storage.exclusively(
+            artifact,
+            target -> target.list(artifact).thenApply(
+                items -> items.stream()
+                    .map(
+                        item -> item.string()
+                            .replaceAll(String.format("%s/", artifact.string()), "")
+                            .split("/")[0]
                     )
-                )
-            ).thenCompose(doc -> doc.save(this.storage, upload))
-            .thenCompose(meta -> new RepositoryChecksums(this.storage).generate(meta));
+                    .filter(item -> !item.startsWith("maven-metadata"))
+                    .collect(Collectors.toSet())
+            ).thenCompose(
+                versions ->
+                    this.storage.value(new Key.From(upload, AstoMaven.MAVEN_META))
+                        .thenCompose(pub -> new PublisherAs(pub).asciiString())
+                        .thenCompose(
+                            str -> {
+                                versions.add(new DeployMetadata(str).release());
+                                return new MavenMetadata(
+                                    Directives.copyOf(new XMLDocument(str).node())
+                                ).versions(versions).save(this.storage, upload);
+                            }
+                        )
+            )
+                .thenCompose(meta -> new RepositoryChecksums(this.storage).generate(meta))
+                .thenCompose(nothing -> this.moveToTheRepository(upload, target, artifact))
+                .thenCompose(nothing -> this.storage.list(upload).thenCompose(this::remove))
+            );
+    }
+
+    /**
+     * Moves artifacts from temp location to repository.
+     * @param upload Upload temp location
+     * @param target Repository
+     * @param artifact Artifact repository location
+     * @return Completion action
+     */
+    private CompletableFuture<Void> moveToTheRepository(
+        final Key upload, final Storage target, final Key artifact
+    ) {
+        final Storage sub = new SubStorage(upload, this.storage);
+        final Storage subversion = new SubStorage(upload.parent().get(), this.storage);
+        return sub.list(Key.ROOT).thenCompose(
+            list -> new Copy(
+                sub,
+                list.stream().filter(key -> key.string().contains(AstoMaven.MAVEN_META))
+                    .collect(Collectors.toList())
+            ).copy(new SubStorage(artifact, target))
+        ).thenCompose(
+            nothing -> subversion.list(Key.ROOT).thenCompose(
+                list -> new Copy(
+                    subversion,
+                    list.stream()
+                        .filter(key -> !key.string().contains(AstoMaven.MAVEN_META))
+                        .collect(Collectors.toList())
+                ).copy(new SubStorage(artifact, target))
+            )
+        );
+    }
+
+    /**
+     * Delete items from storage.
+     * @param items Keys to remove
+     * @return Completable remove operation
+     */
+    private CompletableFuture<Void> remove(final Collection<Key> items) {
+        return CompletableFuture.allOf(
+            items.stream().map(this.storage::delete)
+                .toArray(CompletableFuture[]::new)
+        );
     }
 }
