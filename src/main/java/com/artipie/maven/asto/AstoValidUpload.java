@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
  * - artifacts checksums are correct
  * Upload contains all the uploaded artifacts, snapshot metadata and package metadata, here is the
  * example of upload layout:
+ * <pre>
  * .upload/com/example/logger/0.1-SNAPSHOT
  * |  logger-0.1.jar
  * |  logger-0.1.jar.sha1
@@ -64,6 +65,7 @@ import java.util.stream.Collectors;
  *    |  maven-metadata.xml       # package metadata
  *    |  maven-metadata.xml.sha1
  *    |  maven-metadata.xml.md5
+ * </pre>
  * @since 0.5
  * @checkstyle MagicNumberCheck (500 lines)
  */
