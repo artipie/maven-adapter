@@ -84,7 +84,9 @@ class PutMetadataSliceTest {
         );
         MatcherAssert.assertThat(
             "Metadata file was not saved to storage",
-            this.asto.value(new Key.From(".upload/com/example/any/0.2/maven-metadata.xml")).join(),
+            this.asto.value(
+                new Key.From(".upload/com/example/any/0.2/meta/maven-metadata.xml")
+            ).join(),
             new ContentIs(xml)
         );
     }

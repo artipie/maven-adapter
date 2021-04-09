@@ -55,9 +55,9 @@ import org.reactivestreams.Publisher;
 
 /**
  * This slice accepts PUT requests with maven-metadata.xml checksums, picks up corresponding
- * maven-metadata.xml from the package upload temp location and saves the checksum. If at least
- * sha1 and md5 checksums are present in the package upload location, this slice initiate repository
- * update.
+ * maven-metadata.xml from the package upload temp location and saves the checksum. If upload
+ * is ready to be added in the repository (see {@link ValidUpload#ready(Key)}), this slice initiate
+ * repository update.
  * @since 0.8
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -114,8 +114,9 @@ public final class PutMetadataChecksumSlice implements Slice {
                 this.findAndSave(body, alg, pkg).thenCompose(
                     key -> {
                         final CompletionStage<Response> resp;
-                        if (key.isPresent() && key.get().parent().isPresent()) {
-                            final Key location = key.get().parent().get();
+                        if (key.isPresent() && key.get().parent().isPresent()
+                            && key.get().parent().get().parent().isPresent()) {
+                            final Key location = key.get().parent().get().parent().get();
                             // @checkstyle NestedIfDepthCheck (10 lines)
                             resp = this.valid.ready(location).thenCompose(
                                 ready -> {

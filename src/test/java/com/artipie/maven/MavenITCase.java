@@ -25,6 +25,7 @@ package com.artipie.maven;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import com.artipie.asto.ext.PublisherAs;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.http.auth.Authentication;
@@ -32,8 +33,12 @@ import com.artipie.http.auth.Permissions;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.maven.http.MavenSlice;
 import com.artipie.vertx.VertxSliceServer;
+import com.jcabi.matchers.XhtmlMatchers;
+import com.jcabi.xml.XML;
+import com.jcabi.xml.XMLDocument;
 import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -41,12 +46,15 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.cactoos.list.ListOf;
+import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
+import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
 import org.hamcrest.text.StringContainsInOrder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
@@ -155,6 +163,55 @@ public final class MavenITCase {
         );
         this.clean();
         this.verifyArtifactsAdded("2.0");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true})
+    @Disabled
+    void deploysSnapshot(final boolean anonymous) throws Exception {
+        this.init(this.auth(anonymous));
+        this.settings(this.getUser(anonymous));
+        this.copyHellowordSourceToContainer();
+        MatcherAssert.assertThat(
+            "Failed to deploy version 1.0",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
+            ),
+            new StringContains("BUILD SUCCESS")
+        );
+        this.clean();
+        this.verifyArtifactsAdded("1.0");
+        MatcherAssert.assertThat(
+            "Failed to set version 2.0-SNAPSHOT",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml",
+                "versions:set", "-DnewVersion=2.0-SNAPSHOT"
+            ),
+            new StringContains("BUILD SUCCESS")
+        );
+        MatcherAssert.assertThat(
+            "Failed to deploy version 2.0",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
+            ),
+            new StringContains("BUILD SUCCESS")
+        );
+        this.clean();
+        this.verifySnapshotAdded("2.0-SNAPSHOT");
+        MatcherAssert.assertThat(
+            "Maven metadata xml is not correct",
+            new XMLDocument(
+                this.storage.value(new Key.From("com/artipie/helloworld/maven-metadata.xml"))
+                    .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
+                    .join()
+            ),
+            new AllOf<>(
+                new ListOf<Matcher<? super XML>>(
+                    XhtmlMatchers.hasXPath("/metadata/versioning/latest[text() = '2.0-SNAPSHOT']"),
+                    XhtmlMatchers.hasXPath("/metadata/versioning/release[text() = '1.0']")
+                )
+            )
+        );
     }
 
     @AfterEach
@@ -275,6 +332,21 @@ public final class MavenITCase {
                 "com/artipie/helloworld/maven-metadata.xml",
                 String.format("com/artipie/helloworld/%s/helloworld-%s.pom", version, version),
                 String.format("com/artipie/helloworld/%s/helloworld-%s.jar", version, version)
+            )
+        );
+    }
+
+    private void verifySnapshotAdded(final String version) {
+        MatcherAssert.assertThat(
+            String.format("Artifacts with %s version were not added to storage", version),
+            this.storage.list(new Key.From("com/artipie/helloworld", version))
+                .join().stream().map(Key::string).collect(Collectors.toList()),
+            Matchers.hasItems(
+                new ListOf<Matcher<? extends String>>(
+                    new StringContains(".pom"),
+                    new StringContains(".jar"),
+                    new StringContains("maven-metadata.xml")
+                )
             )
         );
     }

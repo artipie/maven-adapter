@@ -78,6 +78,17 @@ public final class MavenSlice extends Slice.Wrap {
                 new RtRulePath(
                     new RtRule.All(
                         new ByMethodsRule(RqMethod.PUT),
+                        new RtRule.ByPath(".*SNAPSHOT.*")
+                    ),
+                    new BasicAuthSlice(
+                        new UploadSlice(storage),
+                        users,
+                        new Permission.ByName(perms, Action.Standard.WRITE)
+                    )
+                ),
+                new RtRulePath(
+                    new RtRule.All(
+                        new ByMethodsRule(RqMethod.PUT),
                         new RtRule.ByPath(PutMetadataSlice.PTN_META)
                     ),
                     new BasicAuthSlice(

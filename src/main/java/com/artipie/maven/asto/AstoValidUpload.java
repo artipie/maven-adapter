@@ -29,6 +29,7 @@ import com.artipie.asto.ext.ContentDigest;
 import com.artipie.asto.ext.Digests;
 import com.artipie.asto.rx.RxStorageWrapper;
 import com.artipie.maven.ValidUpload;
+import com.artipie.maven.http.PutMetadataSlice;
 import com.artipie.maven.metadata.ArtifactsMetadata;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import io.reactivex.Observable;
@@ -47,6 +48,22 @@ import java.util.stream.Collectors;
  * - check maven-metadata.xml: group and artifact ids from uploaded xml are the same as in
  *  existing xml, checksums (if there are any) are valid
  * - artifacts checksums are correct
+ * Upload contains all the uploaded artifacts, snapshot metadata and package metadata, here is the
+ * example of upload layout:
+ * .upload/com/example/logger/0.1-SNAPSHOT
+ * |  logger-0.1.jar
+ * |  logger-0.1.jar.sha1
+ * |  logger-0.1.jar.md5
+ * |  logger-0.1.pom
+ * |  logger-0.1.pom.sha1
+ * |  logger-0.1.pom.md5
+ * |  maven-metadata.xml          # snapshot metadata
+ * |  maven-metadata.xml.sha1
+ * |  maven-metadata.xml.md5
+ * |--meta
+ *    |  maven-metadata.xml       # package metadata
+ *    |  maven-metadata.xml.sha1
+ *    |  maven-metadata.xml.md5
  * @since 0.5
  * @checkstyle MagicNumberCheck (500 lines)
  */
@@ -128,7 +145,9 @@ public final class AstoValidUpload implements ValidUpload {
                 exists -> {
                     final CompletionStage<Boolean> res;
                     if (exists) {
-                        res = metadata.groupAndArtifact(upload).thenCompose(
+                        res = metadata.groupAndArtifact(
+                            new Key.From(upload, PutMetadataSlice.SUB_META)
+                        ).thenCompose(
                             existing -> metadata.groupAndArtifact(artifact).thenApply(
                                 uploaded -> uploaded.equals(existing)
                             )

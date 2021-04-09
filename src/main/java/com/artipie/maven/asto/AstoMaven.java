@@ -29,6 +29,7 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.SubStorage;
 import com.artipie.asto.ext.PublisherAs;
 import com.artipie.maven.Maven;
+import com.artipie.maven.http.PutMetadataSlice;
 import com.artipie.maven.metadata.DeployMetadata;
 import com.artipie.maven.metadata.MavenMetadata;
 import com.jcabi.xml.XMLDocument;
@@ -79,14 +80,17 @@ public final class AstoMaven implements Maven {
                     .collect(Collectors.toSet())
             ).thenCompose(
                 versions ->
-                    this.storage.value(new Key.From(upload, AstoMaven.MAVEN_META))
-                        .thenCompose(pub -> new PublisherAs(pub).asciiString())
+                    this.storage.value(
+                        new Key.From(upload, PutMetadataSlice.SUB_META, AstoMaven.MAVEN_META)
+                    ).thenCompose(pub -> new PublisherAs(pub).asciiString())
                         .thenCompose(
                             str -> {
                                 versions.add(new DeployMetadata(str).release());
                                 return new MavenMetadata(
                                     Directives.copyOf(new XMLDocument(str).node())
-                                ).versions(versions).save(this.storage, upload);
+                                ).versions(versions).save(
+                                    this.storage, new Key.From(upload, PutMetadataSlice.SUB_META)
+                                );
                             }
                         )
             )
@@ -106,7 +110,9 @@ public final class AstoMaven implements Maven {
     private CompletableFuture<Void> moveToTheRepository(
         final Key upload, final Storage target, final Key artifact
     ) {
-        final Storage sub = new SubStorage(upload, this.storage);
+        final Storage sub = new SubStorage(
+            new Key.From(upload, PutMetadataSlice.SUB_META), this.storage
+        );
         final Storage subversion = new SubStorage(upload.parent().get(), this.storage);
         return sub.list(Key.ROOT).thenCompose(
             list -> new Copy(
