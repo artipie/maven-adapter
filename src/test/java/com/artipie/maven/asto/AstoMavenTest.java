@@ -38,6 +38,7 @@ import com.jcabi.matchers.XhtmlMatchers;
 import com.jcabi.xml.XML;
 import com.jcabi.xml.XMLDocument;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -258,7 +259,7 @@ final class AstoMavenTest {
         final String snapshot = "1.0-SNAPSHOT";
         final Predicate<String> cond = item -> !item.contains(snapshot);
         this.addFilesToStorage(cond, AstoMavenTest.ASTO);
-        this.addFilesToStorage(cond.negate(), AstoMavenTest.ASTO);
+        this.addFilesToStorage(cond.negate(), AstoMavenTest.ASTO_UPLOAD);
         this.metadataAndVersions(snapshot, "0.20.2");
         new AstoMaven(this.storage).update(
             new Key.From(AstoMavenTest.ASTO_UPLOAD, snapshot), AstoMavenTest.ASTO
@@ -319,16 +320,16 @@ final class AstoMavenTest {
         );
     }
 
-    private void metadataAndVersions(final String latest, final String... versions) {
+    private void metadataAndVersions(final String release, final String... versions) {
         new MetadataXml("com.artipie", "asto").addXmlToStorage(
             this.storage,
             new Key.From(
-                AstoMavenTest.ASTO_UPLOAD, latest, PutMetadataSlice.SUB_META, "maven-metadata.xml"
+                AstoMavenTest.ASTO_UPLOAD, release, PutMetadataSlice.SUB_META, "maven-metadata.xml"
             ),
             new MetadataXml.VersionTags(
-                "0.20.2", "0.20.2",
+                Optional.empty(), Optional.of("0.20.2"),
                 Stream.concat(
-                    Stream.of("0.11.1", "0.15", "0.18", "0.20.1", latest),
+                    Stream.of("0.11.1", "0.15", "0.18", "0.20.1", release),
                     Stream.of(versions)
                 ).collect(Collectors.toList())
             )

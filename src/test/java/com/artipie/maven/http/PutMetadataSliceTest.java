@@ -38,6 +38,7 @@ import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.maven.MetadataXml;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import org.cactoos.list.ListOf;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,6 +87,36 @@ class PutMetadataSliceTest {
             "Metadata file was not saved to storage",
             this.asto.value(
                 new Key.From(".upload/com/example/any/0.2/meta/maven-metadata.xml")
+            ).join(),
+            new ContentIs(xml)
+        );
+    }
+
+    @Test
+    void returnsCreatedAndSavesSnapshotMetadata() {
+        final byte[] xml = new MetadataXml("com.example", "any").get(
+            new MetadataXml.VersionTags(
+                Optional.empty(), Optional.of("0.2"),
+                new ListOf<String>("0.1", "0.2", "0.3-SNAPSHOT")
+            )
+        ).getBytes(StandardCharsets.UTF_8);
+        this.asto.save(
+            new Key.From(UploadSlice.TEMP, "com/example/any/0.3-SNAPSHOT/any.jar"), Content.EMPTY
+        ).join();
+        MatcherAssert.assertThat(
+            "Incorrect response status, CREATED is expected",
+            this.pms,
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.CREATED),
+                new RequestLine(RqMethod.PUT, "/com/example/any/maven-metadata.xml"),
+                new Headers.From(new ContentLength(xml.length)),
+                new Content.OneTime(new Content.From(xml))
+            )
+        );
+        MatcherAssert.assertThat(
+            "Metadata file was not saved to storage",
+            this.asto.value(
+                new Key.From(".upload/com/example/any/0.3-SNAPSHOT/meta/maven-metadata.xml")
             ).join(),
             new ContentIs(xml)
         );

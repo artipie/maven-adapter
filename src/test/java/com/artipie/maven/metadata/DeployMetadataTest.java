@@ -26,6 +26,7 @@ package com.artipie.maven.metadata;
 import com.artipie.maven.MetadataXml;
 import org.cactoos.list.ListOf;
 import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,21 @@ class DeployMetadataTest {
                     new MetadataXml.VersionTags("0.3", "12", "0.1")
                 )
             ).release()
+        );
+    }
+
+    @Test
+    void readsSnapshotVersions() {
+        final String one = "0.1-SNAPSHOT";
+        final String two = "0.2-SNAPSHOT";
+        final String three = "3.1-SNAPSHOT";
+        MatcherAssert.assertThat(
+            new DeployMetadata(
+                new MetadataXml("com.example", "logger").get(
+                    new MetadataXml.VersionTags(one, "0.7", "13", two, "0.145", three)
+                )
+            ).snapshots(),
+            Matchers.containsInAnyOrder(one, three, two)
         );
     }
 

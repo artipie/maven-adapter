@@ -38,6 +38,7 @@ import com.artipie.maven.metadata.DeployMetadata;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
@@ -63,6 +64,11 @@ public final class PutMetadataSlice implements Slice {
     static final Pattern PTN_META = Pattern.compile("^/(?<pkg>.+)/maven-metadata.xml$");
 
     /**
+     * Maven metadata file name.
+     */
+    private static final String MAVEN_METADATA = "maven-metadata.xml";
+
+    /**
      * Abstract storage.
      */
     private final Storage asto;
@@ -83,18 +89,31 @@ public final class PutMetadataSlice implements Slice {
             new RequestLineFrom(line).uri().getPath()
         );
         if (matcher.matches()) {
+            final Key pkg = new KeyFromPath(matcher.group("pkg"));
             res = new AsyncResponse(
-                new PublisherAs(body).asciiString().thenCompose(
-                    xml -> this.asto.save(
-                        new Key.From(
-                            UploadSlice.TEMP,
-                            new KeyFromPath(matcher.group("pkg")).string(),
-                            new DeployMetadata(xml).release(),
-                            PutMetadataSlice.SUB_META,
-                            "maven-metadata.xml"
-                        ),
-                        new Content.From(xml.getBytes(StandardCharsets.US_ASCII))
-                    )
+                new PublisherAs(body).asciiString().thenCombine(
+                    this.asto.list(new Key.From(UploadSlice.TEMP, pkg)),
+                    (xml, list) -> {
+                        final Optional<String> snapshot = new DeployMetadata(xml).snapshots()
+                            .stream().filter(
+                                item -> list.stream().anyMatch(key -> key.string().contains(item))
+                            ).findFirst();
+                        return this.asto.save(
+                            snapshot.map(
+                                item -> new Key.From(
+                                    UploadSlice.TEMP, pkg.string(), item,
+                                    PutMetadataSlice.SUB_META, PutMetadataSlice.MAVEN_METADATA
+                                )
+                            ).orElse(
+                                new Key.From(
+                                    UploadSlice.TEMP, pkg.string(),
+                                    new DeployMetadata(xml).release(), PutMetadataSlice.SUB_META,
+                                    PutMetadataSlice.MAVEN_METADATA
+                                )
+                            ),
+                            new Content.From(xml.getBytes(StandardCharsets.US_ASCII))
+                        );
+                    }
                 ).thenApply(nothing -> new RsWithStatus(RsStatus.CREATED))
             );
         } else {

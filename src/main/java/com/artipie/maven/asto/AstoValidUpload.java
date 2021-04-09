@@ -83,7 +83,7 @@ public final class AstoValidUpload implements ValidUpload {
      * Maven metadata and metadata checksums.
      */
     private static final Pattern PTN_META =
-        Pattern.compile(".+/maven-metadata.xml.(?:md5|sha1|sha256|sha512)");
+        Pattern.compile(".+/meta/maven-metadata.xml.(?:md5|sha1|sha256|sha512)");
 
     /**
      * Storage.
