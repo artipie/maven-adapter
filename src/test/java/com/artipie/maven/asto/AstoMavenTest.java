@@ -33,6 +33,7 @@ import com.artipie.asto.fs.FileStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.maven.MetadataXml;
+import com.artipie.maven.http.PutMetadataSlice;
 import com.jcabi.matchers.XhtmlMatchers;
 import com.jcabi.xml.XML;
 import com.jcabi.xml.XMLDocument;
@@ -146,7 +147,9 @@ final class AstoMavenTest {
         final String version = "1.0";
         new TestResource("maven-metadata.xml.example").saveTo(
             this.storage,
-            new Key.From(AstoMavenTest.LGR_UPLOAD, version, "maven-metadata.xml")
+            new Key.From(
+                AstoMavenTest.LGR_UPLOAD, version, PutMetadataSlice.SUB_META, "maven-metadata.xml"
+            )
         );
         new AstoMaven(this.storage).update(
             new Key.From(AstoMavenTest.LGR_UPLOAD, version), AstoMavenTest.LGR
@@ -183,7 +186,9 @@ final class AstoMavenTest {
         final String version = "0.1";
         new TestResource("maven-metadata.xml.example").saveTo(
             this.storage,
-            new Key.From(AstoMavenTest.LGR_UPLOAD, version, "maven-metadata.xml")
+            new Key.From(
+                AstoMavenTest.LGR_UPLOAD, version, PutMetadataSlice.SUB_META, "maven-metadata.xml"
+            )
         );
         new AstoMaven(this.storage).update(
             new Key.From(AstoMavenTest.LGR_UPLOAD, version), AstoMavenTest.LGR
@@ -211,7 +216,10 @@ final class AstoMavenTest {
             new Key.From(AstoMavenTest.LGR, "2.0", "logger-2.0.jar"), Content.EMPTY
         ).join();
         new MetadataXml("com.test", "logger").addXmlToStorage(
-            this.storage, new Key.From(AstoMavenTest.LGR_UPLOAD, "1.0/maven-metadata.xml"),
+            this.storage,
+            new Key.From(
+                AstoMavenTest.LGR_UPLOAD, version, PutMetadataSlice.SUB_META, "maven-metadata.xml"
+            ),
             new MetadataXml.VersionTags("2.0", "1.0", new ListOf<>("2.0", "1.0"))
         );
         new AstoMaven(this.storage).update(
@@ -314,7 +322,9 @@ final class AstoMavenTest {
     private void metadataAndVersions(final String latest, final String... versions) {
         new MetadataXml("com.artipie", "asto").addXmlToStorage(
             this.storage,
-            new Key.From(AstoMavenTest.ASTO_UPLOAD, latest, "maven-metadata.xml"),
+            new Key.From(
+                AstoMavenTest.ASTO_UPLOAD, latest, PutMetadataSlice.SUB_META, "maven-metadata.xml"
+            ),
             new MetadataXml.VersionTags(
                 "0.20.2", "0.20.2",
                 Stream.concat(

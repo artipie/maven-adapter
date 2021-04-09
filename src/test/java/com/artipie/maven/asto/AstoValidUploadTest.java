@@ -29,6 +29,7 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.maven.MetadataXml;
+import com.artipie.maven.http.PutMetadataSlice;
 import java.util.Arrays;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
@@ -125,7 +126,7 @@ public final class AstoValidUploadTest {
         final byte[] bytes = "artifact".getBytes();
         this.bsto.save(jar, bytes);
         new MetadataXml("com.test", "jogger").addXmlToStorage(
-            this.storage, new Key.From(upload, "maven-metadata.xml"),
+            this.storage, new Key.From(upload, PutMetadataSlice.SUB_META, "maven-metadata.xml"),
             new MetadataXml.VersionTags("1.0", "1.0", "1.0")
         );
         this.addMetadata(artifact);
@@ -155,7 +156,9 @@ public final class AstoValidUploadTest {
         );
         Arrays.stream(meta.split(";")).forEach(
             item -> this.bsto.save(
-                new Key.From(location, String.format("maven-metadata.%s", item)), new byte[]{}
+                new Key.From(
+                    location, PutMetadataSlice.SUB_META, String.format("maven-metadata.%s", item)
+                ), new byte[]{}
             )
         );
         MatcherAssert.assertThat(
@@ -165,8 +168,9 @@ public final class AstoValidUploadTest {
     }
 
     private void addMetadata(final Key base) {
-        new TestResource("maven-metadata.xml.example")
-            .saveTo(this.storage, new Key.From(base, "maven-metadata.xml"));
+        new TestResource("maven-metadata.xml.example").saveTo(
+            this.storage, new Key.From(base, PutMetadataSlice.SUB_META, "maven-metadata.xml")
+        );
     }
 
 }

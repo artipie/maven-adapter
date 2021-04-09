@@ -43,13 +43,19 @@ import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
 
 /**
- * This slice accepts PUT requests with maven-metadata.xml, reads `latest` version from the
- * file and saves it to the temp location adding version before the filename:
- * `.upload/${package_name}/${version}/maven-metadata.xml`.
+ * This slice accepts PUT requests with package (not snapshot) maven-metadata.xml,
+ * reads `latest` version from the file and saves it to the temp location adding version and `meta`
+ * before the filename:
+ * `.upload/${package_name}/${version}/meta/maven-metadata.xml`.
  * @since 0.8
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class PutMetadataSlice implements Slice {
+
+    /**
+     * Metadata sub-key.
+     */
+    public static final String SUB_META = "meta";
 
     /**
      * Metadata pattern.
@@ -84,6 +90,7 @@ public final class PutMetadataSlice implements Slice {
                             UploadSlice.TEMP,
                             new KeyFromPath(matcher.group("pkg")).string(),
                             new DeployMetadata(xml).release(),
+                            PutMetadataSlice.SUB_META,
                             "maven-metadata.xml"
                         ),
                         new Content.From(xml.getBytes(StandardCharsets.US_ASCII))
