@@ -1,11 +1,15 @@
 <img src="https://www.artipie.com/logo.svg" width="64px" height="64px"/>
 
-[![Maven Build](https://github.com/artipie/maven-adapter/workflows/Maven%20Build/badge.svg)](https://github.com/artipie/maven-adapter/actions?query=workflow%3A%22Maven+Build%22)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/artipie/maven-adapter/blob/master/LICENSE.txt)
+[![EO principles respected here](https://www.elegantobjects.org/badge.svg)](https://www.elegantobjects.org)
+[![DevOps By Rultor.com](http://www.rultor.com/b/artipie/maven-adapter)](http://www.rultor.com/p/artipie/maven-adapter)
+[![We recommend IntelliJ IDEA](https://www.elegantobjects.org/intellij-idea.svg)](https://www.jetbrains.com/idea/)
+
+[![Javadoc](http://www.javadoc.io/badge/com.artipie/maven-adapter.svg)](http://www.javadoc.io/doc/com.artipie/maven-adapter)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/com.artipie/maven-adapter/blob/master/LICENSE.txt)
+[![codecov](https://codecov.io/gh/artipie/maven-adapter/branch/master/graph/badge.svg)](https://codecov.io/gh/artipie/maven-adapter)
 [![Hits-of-Code](https://hitsofcode.com/github/artipie/maven-adapter)](https://hitsofcode.com/view/github/artipie/maven-adapter)
+[![Maven Central](https://img.shields.io/maven-central/v/com.artipie/maven-adapter.svg)](https://maven-badges.herokuapp.com/maven-central/com.artipie/maven-adapter)
 [![PDD status](http://www.0pdd.com/svg?name=artipie/maven-adapter)](http://www.0pdd.com/p?name=artipie/maven-adapter)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/artipie/maven-adapter?style=plastic)
-![Codecov](https://github.com/artipie/maven-adapter/workflows/Codecov/badge.svg?branch=master)
 
 # maven-adapter
 Maven repository adapter
@@ -64,12 +68,23 @@ $ROOT
                 |-- artifact-1.0.pom.sha1
                 |-- artifact-1.0-sources.jar
                 |-- artifact-1.0-sources.jar.sha1
+            `-- 2.0-SNAPSHOT/
+                |-- artifact-2.0-20210409.123503.jar
+                |-- artifact-2.0-20210409.123503.jar.sha1
+                |-- artifact-2.0-20210409.123503.pom
+                |-- artifact-2.0-20210409.123503.pom.sha1
+                |-- artifact-2.0-20210412.163503.jar
+                |-- artifact-2.0-20210412.163503.jar.sha1
+                |-- artifact-2.0-20210412.163503.pom
+                |-- artifact-2.0-20210412.163503.pom.sha1
+                |-- maven-metadata.xml
+                |-- maven-metadata.xml.sha1
 ```
 
 For example, for an artifact `org.example:artifact:1.0` (Gradle-style notation is used for clarity)
 the path would be `org/example/artifact/1.0/artifact-1.0.jar` (and other files).
 
-###Snapshot repositories
+### Snapshot support
 Maven supports the use of `snapshot` repositories. These repositories are used only when resolving `SNAPSHOT` dependencies.
 `SNAPSHOT` dependencies are just like regular dependencies, with `-SNAPSHOT` appended to it:
 
@@ -81,19 +96,50 @@ Maven supports the use of `snapshot` repositories. These repositories are used o
 </dependency>
 ```
 
-This feature allows anyone which depends on the `SNAPSHOT` version get the latest changes on every build.
+This feature allows anyone which depends on the `SNAPSHOT` version get the latest changes on every build. 
 
-<!--
-@todo #81:30min Snapshot repository support
- Add snapshot repository support to maven adapter. Snapshot repositories allows the download of the latest 
- dependency version with the `SNAPSHOT` tag. Repositories marked with snapshot flag should be able to resolve
- snapshot dependencies, which means that if we have a snapshot repository it will be able to download the
- snapshot (latest) version of the used libraries. For more info on how snapshot repositories work, see 
- https://blog.packagecloud.io/eng/2017/03/09/how-does-a-maven-repository-work/#release-and-snapshot-repositories
- . Start by creating interfaces for repository, then snapshot repositories and implementing
- unit and integration tests assuring that common repositories do not allows the usage of snapshot libraries 
- (and snapshot repositories allows it) and then implement the snapshot feature itself.
--->  
+In the repository layout snapshots subdirectories usually contain several versions of the package, 
+files creation timestamps are appended to the filenames. Also, snapshots have their own maven metadata.
+
+### Upload process
+On deploy maven client sends to the server package artifacts with the help of the `PUT` HTTP requests, 
+at the end of the deploy process maven client sends package metadata. 
+Here an example of maven request set:
+```commandline
+PUT /com/artipie/helloworld/1.0/helloworld-1.0.jar
+PUT /com/artipie/helloworld/1.0/helloworld-1.0.jar.sha1
+PUT /com/artipie/helloworld/1.0/helloworld-1.0.pom
+PUT /com/artipie/helloworld/1.0/helloworld-1.0.pom.sha1
+GET /com/artipie/helloworld/maven-metadata.xml
+PUT /com/artipie/helloworld/maven-metadata.xml
+PUT /com/artipie/helloworld/maven-metadata.xml.sha1
+```
+
+Uploaded data are saved to the temporary upload location with the following layout:
+```commandline
+|-- .upload
+  `-- com
+     `--example
+        `-- logger
+          `-- 0.1-SNAPSHOT
+              |-- logger-0.1.jar
+              |-- logger-0.1.jar.sha1
+              |-- logger-0.1.jar.md5
+              |-- logger-0.1.pom
+              |-- logger-0.1.pom.sha1
+              |-- logger-0.1.pom.md5
+              |-- maven-metadata.xml             # snapshot metadata
+              |-- maven-metadata.xml.sha1
+              |-- maven-metadata.xml.md5
+                `-- meta
+                    |-- maven-metadata.xml       # package metadata
+                    |-- maven-metadata.xml.sha1
+                    |-- maven-metadata.xml.md5
+```
+
+Repository update is started when an artifact (any, nondeterministic) and package maven-metadata.xml 
+have the same set of checksums. On the repository update checksums are verified, 
+package metadata are processed and all the received artifacts are saved to the repository. 
 
 ## How to contribute
 
