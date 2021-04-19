@@ -25,6 +25,7 @@ package com.artipie.maven.metadata;
 
 import com.jcabi.xml.XMLDocument;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -63,8 +64,8 @@ public final class DeployMetadata {
      * Reads snapshot versions from metadata.xml.
      * @return List of snapshot versions
      */
-    public List<String> snapshots() {
+    public Set<String> snapshots() {
         return new XMLDocument(this.data).xpath("//version/text()").stream()
-            .filter(item -> item.contains("SNAPSHOT")).collect(Collectors.toList());
+            .filter(item -> item.contains("SNAPSHOT")).collect(Collectors.toSet());
     }
 }
