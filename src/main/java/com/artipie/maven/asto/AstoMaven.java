@@ -27,10 +27,10 @@ import com.artipie.asto.Copy;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.SubStorage;
+import com.artipie.asto.ext.KeyLastPart;
 import com.artipie.asto.ext.PublisherAs;
 import com.artipie.maven.Maven;
 import com.artipie.maven.http.PutMetadataSlice;
-import com.artipie.maven.metadata.DeployMetadata;
 import com.artipie.maven.metadata.MavenMetadata;
 import com.jcabi.xml.XMLDocument;
 import java.util.Collection;
@@ -85,7 +85,7 @@ public final class AstoMaven implements Maven {
                     ).thenCompose(pub -> new PublisherAs(pub).asciiString())
                         .thenCompose(
                             str -> {
-                                versions.add(new DeployMetadata(str).release());
+                                versions.add(new KeyLastPart(upload).get());
                                 return new MavenMetadata(
                                     Directives.copyOf(new XMLDocument(str).node())
                                 ).versions(versions).save(
@@ -125,8 +125,11 @@ public final class AstoMaven implements Maven {
                 list -> new Copy(
                     subversion,
                     list.stream()
-                        .filter(key -> !key.string().contains(AstoMaven.MAVEN_META))
-                        .collect(Collectors.toList())
+                        .filter(
+                            key -> !key.string().contains(
+                                String.format("/%s/", PutMetadataSlice.SUB_META)
+                            )
+                        ).collect(Collectors.toList())
                 ).copy(new SubStorage(artifact, target))
             )
         );

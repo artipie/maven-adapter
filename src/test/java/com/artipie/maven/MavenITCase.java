@@ -54,7 +54,6 @@ import org.hamcrest.core.StringContains;
 import org.hamcrest.text.StringContainsInOrder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
@@ -166,8 +165,7 @@ public final class MavenITCase {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {true})
-    @Disabled
+    @ValueSource(booleans = {true, false})
     void deploysSnapshot(final boolean anonymous) throws Exception {
         this.init(this.auth(anonymous));
         this.settings(this.getUser(anonymous));
@@ -341,12 +339,10 @@ public final class MavenITCase {
             String.format("Artifacts with %s version were not added to storage", version),
             this.storage.list(new Key.From("com/artipie/helloworld", version))
                 .join().stream().map(Key::string).collect(Collectors.toList()),
-            Matchers.hasItems(
-                new ListOf<Matcher<? extends String>>(
-                    new StringContains(".pom"),
-                    new StringContains(".jar"),
-                    new StringContains("maven-metadata.xml")
-                )
+            Matchers.allOf(
+                Matchers.hasItem(new StringContains(".jar")),
+                Matchers.hasItem(new StringContains(".pom")),
+                Matchers.hasItem(new StringContains("maven-metadata.xml"))
             )
         );
     }
