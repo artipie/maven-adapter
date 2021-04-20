@@ -112,8 +112,7 @@ public final class MavenITCase {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void downloadsDependency(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+        this.init(anonymous);
         this.addHellowordToArtipie();
         MatcherAssert.assertThat(
             this.exec(
@@ -133,8 +132,7 @@ public final class MavenITCase {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void deploysArtifact(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+        this.init(anonymous);
         this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
             "Failed to deploy version 1.0",
@@ -167,8 +165,7 @@ public final class MavenITCase {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void deploysSnapshotAfterRelease(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+        this.init(anonymous);
         this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
             "Failed to deploy version 1.0",
@@ -215,8 +212,7 @@ public final class MavenITCase {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void deploysSnapshot(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+        this.init(anonymous);
         this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
             "Failed to set version 1.0-SNAPSHOT",
@@ -261,7 +257,8 @@ public final class MavenITCase {
         MavenITCase.VERTX.close();
     }
 
-    void init(final Pair<Permissions, Authentication> auth) {
+    void init(final boolean anonymous) throws IOException {
+        final Pair<Permissions, Authentication> auth = this.auth(anonymous);
         this.storage = new InMemoryStorage();
         this.server = new VertxSliceServer(
             MavenITCase.VERTX,
@@ -274,6 +271,7 @@ public final class MavenITCase {
             .withWorkingDirectory("/home/")
             .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
+        this.settings(this.getUser(anonymous));
     }
 
     private String exec(final String... actions) throws Exception {
