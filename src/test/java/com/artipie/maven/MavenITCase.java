@@ -112,8 +112,7 @@ public final class MavenITCase {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void downloadsDependency(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+        this.init(anonymous);
         this.addHellowordToArtipie();
         MatcherAssert.assertThat(
             this.exec(
@@ -133,8 +132,7 @@ public final class MavenITCase {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void deploysArtifact(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+        this.init(anonymous);
         this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
             "Failed to deploy version 1.0",
@@ -166,9 +164,8 @@ public final class MavenITCase {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void deploysSnapshot(final boolean anonymous) throws Exception {
-        this.init(this.auth(anonymous));
-        this.settings(this.getUser(anonymous));
+    void deploysSnapshotAfterRelease(final boolean anonymous) throws Exception {
+        this.init(anonymous);
         this.copyHellowordSourceToContainer();
         MatcherAssert.assertThat(
             "Failed to deploy version 1.0",
@@ -212,6 +209,43 @@ public final class MavenITCase {
         );
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void deploysSnapshot(final boolean anonymous) throws Exception {
+        this.init(anonymous);
+        this.copyHellowordSourceToContainer();
+        MatcherAssert.assertThat(
+            "Failed to set version 1.0-SNAPSHOT",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml",
+                "versions:set", "-DnewVersion=1.0-SNAPSHOT"
+            ),
+            new StringContains("BUILD SUCCESS")
+        );
+        MatcherAssert.assertThat(
+            "Failed to deploy version 1.0-SNAPSHOT",
+            this.exec(
+                "mvn", "-s", "/home/settings.xml", "-f", "/home/helloworld-src/pom.xml", "deploy"
+            ),
+            new StringContains("BUILD SUCCESS")
+        );
+        this.clean();
+        this.verifySnapshotAdded("1.0-SNAPSHOT");
+        MatcherAssert.assertThat(
+            "Maven metadata xml is not correct",
+            new XMLDocument(
+                this.storage.value(new Key.From("com/artipie/helloworld/maven-metadata.xml"))
+                    .thenCompose(content -> new PublisherAs(content).string(StandardCharsets.UTF_8))
+                    .join()
+            ),
+            new AllOf<>(
+                new ListOf<Matcher<? super XML>>(
+                    XhtmlMatchers.hasXPath("/metadata/versioning/latest[text() = '1.0-SNAPSHOT']")
+                )
+            )
+        );
+    }
+
     @AfterEach
     void stopContainer() {
         this.server.close();
@@ -223,7 +257,8 @@ public final class MavenITCase {
         MavenITCase.VERTX.close();
     }
 
-    void init(final Pair<Permissions, Authentication> auth) {
+    void init(final boolean anonymous) throws IOException {
+        final Pair<Permissions, Authentication> auth = this.auth(anonymous);
         this.storage = new InMemoryStorage();
         this.server = new VertxSliceServer(
             MavenITCase.VERTX,
@@ -236,6 +271,7 @@ public final class MavenITCase {
             .withWorkingDirectory("/home/")
             .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
+        this.settings(this.getUser(anonymous));
     }
 
     private String exec(final String... actions) throws Exception {

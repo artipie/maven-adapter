@@ -94,6 +94,33 @@ class PutMetadataSliceTest {
 
     @Test
     void returnsCreatedAndSavesSnapshotMetadata() {
+        final byte[] xml = new MetadataXml("com.example", "abc").get(
+            new MetadataXml.VersionTags("0.1-SNAPSHOT", "0.2-SNAPSHOT")
+        ).getBytes(StandardCharsets.UTF_8);
+        this.asto.save(
+            new Key.From(UploadSlice.TEMP, "com/example/abc/0.2-SNAPSHOT/abc.jar"), Content.EMPTY
+        ).join();
+        MatcherAssert.assertThat(
+            "Incorrect response status, CREATED is expected",
+            this.pms,
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.CREATED),
+                new RequestLine(RqMethod.PUT, "/com/example/abc/maven-metadata.xml"),
+                new Headers.From(new ContentLength(xml.length)),
+                new Content.OneTime(new Content.From(xml))
+            )
+        );
+        MatcherAssert.assertThat(
+            "Metadata file was not saved to storage",
+            this.asto.value(
+                new Key.From(".upload/com/example/abc/0.2-SNAPSHOT/meta/maven-metadata.xml")
+            ).join(),
+            new ContentIs(xml)
+        );
+    }
+
+    @Test
+    void returnsCreatedAndSavesSnapshotMetadataWhenReleaseIsPresent() {
         final byte[] xml = new MetadataXml("com.example", "any").get(
             new MetadataXml.VersionTags(
                 Optional.empty(), Optional.of("0.2"),

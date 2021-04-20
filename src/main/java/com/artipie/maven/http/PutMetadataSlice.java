@@ -98,19 +98,21 @@ public final class PutMetadataSlice implements Slice {
                             .stream().filter(
                                 item -> list.stream().anyMatch(key -> key.string().contains(item))
                             ).findFirst();
+                        final Key key;
+                        if (snapshot.isPresent()) {
+                            key = new Key.From(
+                                UploadSlice.TEMP, pkg.string(), snapshot.get(),
+                                PutMetadataSlice.SUB_META, PutMetadataSlice.MAVEN_METADATA
+                            );
+                        } else {
+                            key = new Key.From(
+                                UploadSlice.TEMP, pkg.string(),
+                                new DeployMetadata(xml).release(), PutMetadataSlice.SUB_META,
+                                PutMetadataSlice.MAVEN_METADATA
+                            );
+                        }
                         return this.asto.save(
-                            snapshot.map(
-                                item -> new Key.From(
-                                    UploadSlice.TEMP, pkg.string(), item,
-                                    PutMetadataSlice.SUB_META, PutMetadataSlice.MAVEN_METADATA
-                                )
-                            ).orElse(
-                                new Key.From(
-                                    UploadSlice.TEMP, pkg.string(),
-                                    new DeployMetadata(xml).release(), PutMetadataSlice.SUB_META,
-                                    PutMetadataSlice.MAVEN_METADATA
-                                )
-                            ),
+                            key,
                             new Content.From(xml.getBytes(StandardCharsets.US_ASCII))
                         );
                     }
